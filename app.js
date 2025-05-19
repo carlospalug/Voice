@@ -66,6 +66,76 @@ const knowledgeBase = {
     "help": "I can help with various tasks. You can ask me questions, request information, open websites, get the time or date, and more. Just speak naturally and I'll try to assist you."
 };
 
+// Enhanced knowledge domains to generate more relevant responses
+const knowledgeDomains = {
+    technology: {
+        keywords: ["computer", "programming", "software", "hardware", "app", "internet", "code", "tech", "algorithm", "data", "website", "digital", "electronic", "device", "mobile", "laptop", "server", "cloud", "blockchain", "virtual", "cyber"],
+        facts: [
+            "plays a crucial role in modern society and continues to evolve rapidly",
+            "has transformed how people work, communicate, and access information",
+            "enables innovations across almost every industry and field",
+            "requires continuous learning as new developments emerge frequently",
+            "combines hardware and software components to solve problems",
+            "can be both beneficial and challenging for society"
+        ]
+    },
+    science: {
+        keywords: ["physics", "chemistry", "biology", "experiment", "theory", "laboratory", "research", "scientific", "molecule", "atom", "cell", "organism", "gene", "evolution", "quantum", "relativity", "gravity", "energy", "reaction", "hypothesis"],
+        facts: [
+            "is based on empirical evidence and systematic experimentation",
+            "works through the scientific method of observation, hypothesis, and testing",
+            "has established fundamental laws that explain natural phenomena",
+            "continues to expand human understanding of the universe",
+            "relies on peer review and reproducibility of results",
+            "often builds on previous discoveries to advance knowledge"
+        ]
+    },
+    history: {
+        keywords: ["ancient", "medieval", "modern", "century", "war", "civilization", "empire", "king", "queen", "president", "dynasty", "revolution", "artifact", "archaeology", "historical", "era", "period", "movement", "culture", "nation"],
+        facts: [
+            "provides valuable context for understanding current events and societies",
+            "is studied through primary sources, artifacts, and written records",
+            "reveals patterns in human behavior and societal development",
+            "encompasses political, social, economic, and cultural developments",
+            "has been interpreted differently across times and places",
+            "helps us learn from past successes and failures"
+        ]
+    },
+    arts: {
+        keywords: ["music", "painting", "literature", "film", "theater", "dance", "sculpture", "poetry", "novel", "art", "creative", "artist", "author", "director", "composer", "design", "performance", "aesthetic", "style", "genre"],
+        facts: [
+            "serves as a form of expression and communication across cultures",
+            "reflects and influences the societies in which it's created",
+            "encompasses many forms including visual, performing, and literary works",
+            "often explores themes of human experience and emotion",
+            "has evolved through different movements and periods",
+            "can be interpreted subjectively by different audiences"
+        ]
+    },
+    business: {
+        keywords: ["economy", "finance", "market", "company", "corporation", "startup", "entrepreneur", "investment", "profit", "stock", "trade", "industry", "management", "strategy", "product", "service", "customer", "employment", "budget", "revenue"],
+        facts: [
+            "drives economic growth and development in societies",
+            "operates in increasingly global and interconnected markets",
+            "requires balancing profit motives with ethical considerations",
+            "involves various functions such as marketing, finance, and operations",
+            "has been transformed by technological innovations",
+            "faces challenges of sustainability and social responsibility"
+        ]
+    },
+    health: {
+        keywords: ["medical", "disease", "treatment", "doctor", "hospital", "patient", "drug", "therapy", "mental", "physical", "exercise", "diet", "nutrition", "wellness", "vaccine", "surgery", "diagnosis", "prevention", "healthcare", "medicine"],
+        facts: [
+            "encompasses physical, mental, and social well-being",
+            "is influenced by lifestyle choices, genetics, and environmental factors",
+            "advances through medical research and technological innovation",
+            "requires both preventive measures and treatment approaches",
+            "varies in access and quality across different regions",
+            "includes traditional practices alongside modern medicine"
+        ]
+    }
+};
+
 // Function to check if message is explicitly asking to use Google
 function isExplicitGoogleRequest(message) {
     return message.includes('use google to') || 
@@ -304,9 +374,120 @@ async function searchNews(query) {
     }
 }
 
+// Function to generate a context-aware simulated knowledge graph response
+function generateKnowledgeGraphResponse(query) {
+    // Clean the query and extract main terms
+    const cleanQuery = query.replace(/what is|who is|where is|when is|why is|how does|can you tell me about/gi, '').trim();
+    const queryWords = cleanQuery.toLowerCase().split(/\s+/);
+    
+    // Identify matching knowledge domains
+    let bestDomain = null;
+    let bestMatchScore = 0;
+    let matchedKeywords = [];
+    
+    // Find the domain with the most keyword matches
+    for (const [domain, data] of Object.entries(knowledgeDomains)) {
+        const domainKeywords = data.keywords;
+        const matches = queryWords.filter(word => domainKeywords.includes(word));
+        
+        if (matches.length > bestMatchScore) {
+            bestMatchScore = matches.length;
+            bestDomain = domain;
+            matchedKeywords = matches;
+        }
+    }
+    
+    // If no good domain match, use a general response
+    if (bestMatchScore === 0 || bestDomain === null) {
+        // Look for named entities (capitalized words) in the query
+        const possibleEntities = cleanQuery.split(/\s+/).filter(word => 
+            word.length > 1 && word[0] === word[0].toUpperCase()
+        );
+        
+        let generalResponse = '';
+        
+        if (possibleEntities.length > 0) {
+            const entities = possibleEntities.join(', ');
+            generalResponse = `Based on my knowledge graph, ${cleanQuery} appears to be associated with ${entities}. This subject involves multiple concepts and perspectives. The most accurate information would come from specialized sources on this topic.`;
+        } else {
+            // Extract potentially important terms (words longer than 4 characters)
+            const significantTerms = queryWords.filter(word => word.length > 4);
+            
+            if (significantTerms.length > 0) {
+                generalResponse = `My knowledge graph shows that ${cleanQuery} relates to concepts like ${significantTerms.join(', ')}. This is a multifaceted topic with various aspects to consider. For comprehensive information, consulting authoritative sources would be ideal.`;
+            } else {
+                generalResponse = `${cleanQuery} encompasses several interrelated concepts according to my knowledge graph. This topic has various dimensions worth exploring. For detailed information, I recommend consulting specialized resources on this subject.`;
+            }
+        }
+        
+        return {
+            source: 'Knowledge Graph',
+            title: cleanQuery,
+            summary: generalResponse
+        };
+    }
+    
+    // Generate a response based on the best matching domain
+    const domainData = knowledgeDomains[bestDomain];
+    
+    // Pick 2-3 random facts from the domain
+    const shuffledFacts = [...domainData.facts].sort(() => 0.5 - Math.random());
+    const selectedFacts = shuffledFacts.slice(0, Math.min(3, shuffledFacts.length));
+    
+    // Highlight the matched keywords in the response
+    const highlightedKeywords = matchedKeywords.length > 0 
+        ? matchedKeywords.join(', ') 
+        : `aspects of ${bestDomain}`;
+    
+    // Construct the response
+    const response = `According to my knowledge graph, ${cleanQuery} is related to ${highlightedKeywords} in the field of ${bestDomain}. This topic ${selectedFacts.join('. Also, it ')}. For more comprehensive information, specialized resources would provide deeper insights.`;
+    
+    return {
+        source: 'Knowledge Graph',
+        title: `Information about ${cleanQuery}`,
+        summary: response,
+        relatedConcepts: highlightedKeywords,
+        domain: bestDomain
+    };
+}
+
+// Function to detect the query intent for better response selection
+function detectQueryIntent(query) {
+    const lowerQuery = query.toLowerCase();
+    
+    if (lowerQuery.includes('how to') || lowerQuery.includes('steps to') || lowerQuery.includes('guide for')) {
+        return 'how-to';
+    }
+    
+    if (lowerQuery.includes('meaning of') || lowerQuery.includes('define') || lowerQuery.includes('what is') || lowerQuery.includes('what are')) {
+        return 'definition';
+    }
+    
+    if (lowerQuery.includes('history of') || lowerQuery.includes('origin of') || lowerQuery.includes('when did') || lowerQuery.includes('when was')) {
+        return 'history';
+    }
+    
+    if (lowerQuery.includes('difference between') || lowerQuery.includes('compare') || lowerQuery.includes('versus') || lowerQuery.includes('vs')) {
+        return 'comparison';
+    }
+    
+    if (lowerQuery.includes('best') || lowerQuery.includes('top') || lowerQuery.includes('recommended') || lowerQuery.includes('most popular')) {
+        return 'recommendation';
+    }
+    
+    if (lowerQuery.includes('news') || lowerQuery.includes('latest') || lowerQuery.includes('recent') || lowerQuery.includes('update')) {
+        return 'news';
+    }
+    
+    return 'general-information';
+}
+
 // Function to get answers from multiple sources
 async function getMultiSourceAnswer(query) {
     content.textContent = "Searching for information...";
+    
+    // Detect the query intent for customizing responses
+    const queryIntent = detectQueryIntent(query);
     
     // Try Wikipedia first
     const wikiResult = await searchWikipedia(query);
@@ -365,7 +546,7 @@ async function getMultiSourceAnswer(query) {
     }
     
     // Check if it's a news-related query
-    if (query.includes('news') || query.includes('latest') || query.includes('updates') || query.includes('what\'s happening')) {
+    if (queryIntent === 'news') {
         const newsResult = await searchNews(query);
         
         if (newsResult) {
@@ -397,29 +578,43 @@ async function getMultiSourceAnswer(query) {
         }
     }
     
-    // If we still don't have an answer, create a more meaningful simulated knowledge result
-    // Extract key terms from the query
-    const searchTerms = query.replace(/what is|who is|where is|when is|how to|why is|can you|tell me/gi, '').trim();
-    const keyWords = searchTerms.split(' ').filter(word => word.length > 3);
+    // If we still don't have an answer, use our enhanced knowledge graph response
+    const knowledgeGraphResult = generateKnowledgeGraphResponse(query);
     
-    let simulatedResponse = `Based on general knowledge, ${searchTerms} `;
+    // Customize the response based on query intent
+    let responseIntro = '';
     
-    if (keyWords.length > 0) {
-        simulatedResponse += `involves concepts related to ${keyWords.join(', ')}. `;
+    switch (queryIntent) {
+        case 'definition':
+            responseIntro = `Here's what my knowledge graph shows about the meaning of ${query.replace(/what is|what are|define|meaning of/gi, '').trim()}: `;
+            break;
+        case 'how-to':
+            responseIntro = `Regarding how to ${query.replace(/how to|steps to|guide for/gi, '').trim()}, my knowledge graph indicates: `;
+            break;
+        case 'history':
+            responseIntro = `On the history of ${query.replace(/history of|origin of|when did|when was/gi, '').trim()}, my knowledge graph shows: `;
+            break;
+        case 'comparison':
+            responseIntro = `Comparing ${query.replace(/difference between|compare|versus|vs/gi, '').trim()}, based on my knowledge graph: `;
+            break;
+        case 'recommendation':
+            responseIntro = `Regarding ${query.replace(/best|top|recommended|most popular/gi, '').trim()}, my knowledge graph suggests: `;
+            break;
+        default:
+            responseIntro = '';
     }
     
-    simulatedResponse += `This is a complex topic with multiple perspectives. I can't provide a comprehensive answer at the moment, but I can search for more detailed information for you.`;
-    
-    content.textContent = simulatedResponse;
-    speak(simulatedResponse);
+    const finalResponse = responseIntro + knowledgeGraphResult.summary;
+    content.textContent = finalResponse;
+    speak(finalResponse);
     
     setTimeout(() => {
-        speak("Would you like me to search Google for more details? Say yes or no.");
+        speak("Would you like me to search Google for more detailed information? Say yes or no.");
         window.pendingSearch = {
             query: query,
             type: 'google'
         };
-    }, 1000 * (simulatedResponse.split(' ').length / 3));
+    }, 1000 * (finalResponse.split(' ').length / 3));
 }
 
 function takeCommand(message) {
