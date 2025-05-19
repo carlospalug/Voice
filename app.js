@@ -1,6 +1,21 @@
 const btn = document.querySelector('.talk');
 const content = document.querySelector('.content');
 
+// Define knowledgeBase globally to ensure it's available throughout the file
+const knowledgeBase = {
+    "who are you": "I am CENTGPT, your virtual assistant. I can answer questions, provide information, and help you navigate the web.",
+    "what can you do": "I can answer basic questions, tell you the time and date, open websites, search for information, and have simple conversations.",
+    "how are you": "I'm functioning well, thank you for asking. How can I assist you today?",
+    "what is ai": "Artificial Intelligence or AI refers to systems or machines that mimic human intelligence to perform tasks and can iteratively improve themselves based on the information they collect.",
+    "what is machine learning": "Machine Learning is a subset of AI that enables systems to learn from data, identify patterns, and make decisions with minimal human intervention.",
+    "who created you": "I was created as a virtual assistant project called CENTGPT.",
+    "tell me a joke": "Why don't scientists trust atoms? Because they make up everything!",
+    "another joke": "Why did the JavaScript developer wear glasses? Because he couldn't C#!",
+    "thank you": "You're welcome! Is there anything else I can help you with?",
+    "goodbye": "Goodbye! Have a great day. Call me again if you need assistance.",
+    "bye": "Goodbye! Have a great day. Call me again if you need assistance."
+};
+
 function speak(text) {
     const text_speak = new SpeechSynthesisUtterance(text);
 
@@ -43,21 +58,6 @@ btn.addEventListener('click', () => {
     content.textContent = "Listening...";
     recognition.start();
 });
-
-// Simple knowledge base for direct answers
-const knowledgeBase = {
-    "who are you": "I am CENTGPT, your virtual assistant. I can answer questions, provide information, and help you navigate the web.",
-    "what can you do": "I can answer basic questions, tell you the time and date, open websites, search for information, and have simple conversations.",
-    "how are you": "I'm functioning well, thank you for asking. How can I assist you today?",
-    "what is ai": "Artificial Intelligence or AI refers to systems or machines that mimic human intelligence to perform tasks and can iteratively improve themselves based on the information they collect.",
-    "what is machine learning": "Machine Learning is a subset of AI that enables systems to learn from data, identify patterns, and make decisions with minimal human intervention.",
-    "who created you": "I was created as a virtual assistant project called CENTGPT.",
-    "tell me a joke": "Why don't scientists trust atoms? Because they make up everything!",
-    "another joke": "Why did the JavaScript developer wear glasses? Because he couldn't C#!",
-    "thank you": "You're welcome! Is there anything else I can help you with?",
-    "goodbye": "Goodbye! Have a great day. Call me again if you need assistance.",
-    "bye": "Goodbye! Have a great day. Call me again if you need assistance."
-};
 
 // Function to check if message is explicitly asking to use Google
 function isExplicitGoogleRequest(message) {
