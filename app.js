@@ -52,7 +52,6 @@ const knowledgeBase = {
     "what is ai": "Artificial Intelligence or AI refers to systems or machines that mimic human intelligence to perform tasks and can iteratively improve themselves based on the information they collect.",
     "what is machine learning": "Machine Learning is a subset of AI that enables systems to learn from data, identify patterns, and make decisions with minimal human intervention.",
     "who created you": "I was created as a virtual assistant project called CENTGPT.",
-    "what is the weather": "I don't have real-time weather data. Would you like me to search for current weather information online?",
     "tell me a joke": "Why don't scientists trust atoms? Because they make up everything!",
     "another joke": "Why did the JavaScript developer wear glasses? Because he couldn't C#!",
     "thank you": "You're welcome! Is there anything else I can help you with?",
@@ -60,42 +59,84 @@ const knowledgeBase = {
     "bye": "Goodbye! Have a great day. Call me again if you need assistance."
 };
 
-// Function to check if the message is asking about a person, place, or thing
-function isInfoQuery(message) {
-    return message.includes('who is') || 
-           message.includes('what is') || 
-           message.includes('where is') || 
-           message.includes('tell me about') ||
-           message.includes('information on');
+// Function to check if message is explicitly asking to use Google
+function isExplicitGoogleRequest(message) {
+    return message.includes('use google to') || 
+           message.includes('search google for') || 
+           message.includes('google search for') ||
+           message.includes('look up on google');
 }
 
-// Function to ask user if they want to search online
-function askToSearch(message, searchType = 'google') {
-    content.textContent = `Would you like me to search ${searchType} for "${message}"? Say "yes" or "no".`;
-    speak(`Would you like me to search ${searchType} for this information? Say yes or no.`);
+// Function to perform a Wikipedia search and get a summary
+async function searchWikipedia(query) {
+    content.textContent = "Searching for information...";
     
-    // Set a flag to handle the next recognition as a yes/no response
-    window.pendingSearch = {
-        query: message,
-        type: searchType
-    };
-}
-
-// Helper function to find direct answers from the knowledge base
-function getDirectAnswer(message) {
-    // First try exact match
-    if (knowledgeBase[message]) {
-        return knowledgeBase[message];
-    }
-    
-    // Then try to find partial matches
-    for (const key in knowledgeBase) {
-        if (message.includes(key)) {
-            return knowledgeBase[key];
+    try {
+        // Format the query for the API
+        const searchTerm = query.replace(/what is|who is|where is|tell me about|information on/gi, '').trim();
+        
+        // First, search for the term to get the page title
+        const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srlimit=1&format=json&origin=*&srsearch=${encodeURIComponent(searchTerm)}`;
+        const searchResponse = await fetch(searchUrl);
+        const searchData = await searchResponse.json();
+        
+        // If no search results found
+        if (!searchData.query.search.length) {
+            speak("I couldn't find information about that. Would you like me to search Google instead?");
+            window.pendingSearch = {
+                query: searchTerm,
+                type: 'google'
+            };
+            return;
         }
+        
+        // Get the page title from search results
+        const pageTitle = searchData.query.search[0].title;
+        
+        // Get the page extract (summary)
+        const summaryUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&format=json&origin=*&titles=${encodeURIComponent(pageTitle)}`;
+        const summaryResponse = await fetch(summaryUrl);
+        const summaryData = await summaryResponse.json();
+        
+        // Extract the page ID and content
+        const pageId = Object.keys(summaryData.query.pages)[0];
+        let extract = summaryData.query.pages[pageId].extract;
+        
+        // Clean up the HTML to plain text and get a concise version
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = extract;
+        extract = tempDiv.textContent || tempDiv.innerText || "";
+        
+        // Limit to a reasonable length for speech
+        const summary = extract.split('. ').slice(0, 3).join('. ') + '.';
+        
+        // Display and speak the summary
+        content.textContent = summary;
+        speak(summary);
+        
+        // Ask if user wants more detailed information
+        setTimeout(() => {
+            speak("Would you like me to open the full Wikipedia page for more information? Say yes or no.");
+            window.pendingSearch = {
+                query: pageTitle,
+                type: 'wikipedia-page'
+            };
+        }, 1000 * (summary.split(' ').length / 3)); // Wait for speech to finish
+        
+    } catch (error) {
+        console.error("Error searching Wikipedia:", error);
+        speak("I'm having trouble searching for that information. Would you like me to try Google instead?");
+        window.pendingSearch = {
+            query,
+            type: 'google'
+        };
     }
-    
-    return null;
+}
+
+// Function to perform a general web search in real-time
+async function performWebSearch(query) {
+    // First try Wikipedia as it has a free API
+    await searchWikipedia(query);
 }
 
 function takeCommand(message) {
@@ -106,14 +147,14 @@ function takeCommand(message) {
             const type = window.pendingSearch.type;
             
             if (type === 'google') {
-                window.open(`https://www.google.com/search?q=${query.replace(" ", "+")}`, "_blank");
-                speak(`Searching Google for ${query}`);
-            } else if (type === 'wikipedia') {
-                window.open(`https://en.wikipedia.org/wiki/${query.replace("wikipedia", "").trim()}`, "_blank");
-                speak(`Looking up ${query} on Wikipedia`);
+                window.open(`https://www.google.com/search?q=${query.replace(/\s+/g, "+")}`, "_blank");
+                speak(`Opening Google search for ${query}`);
+            } else if (type === 'wikipedia-page') {
+                window.open(`https://en.wikipedia.org/wiki/${query.replace(/\s+/g, "_")}`, "_blank");
+                speak(`Opening the Wikipedia page for ${query}`);
             }
         } else {
-            speak("Okay, I won't search online. Is there anything else you'd like to know?");
+            speak("Okay, is there anything else you'd like to know?");
         }
         
         // Clear the pending search
@@ -122,7 +163,7 @@ function takeCommand(message) {
     }
     
     // Try to find a direct answer first
-    const directAnswer = getDirectAnswer(message);
+    const directAnswer = knowledgeBase[message] || Object.keys(knowledgeBase).find(key => message.includes(key) && knowledgeBase[key]);
     if (directAnswer) {
         speak(directAnswer);
         return;
@@ -153,17 +194,14 @@ function takeCommand(message) {
         const finalText = "Opening Calculator";
         speak(finalText);
     } 
-    // Handle the wikipedia specific search
-    else if (message.includes('wikipedia')) {
-        askToSearch(message, 'wikipedia');
+    // Explicit request to use Google
+    else if (isExplicitGoogleRequest(message)) {
+        const searchQuery = message.replace(/use google to|search google for|google search for|look up on google/gi, '').trim();
+        window.open(`https://www.google.com/search?q=${searchQuery.replace(/\s+/g, "+")}`, "_blank");
+        speak(`Opening Google search for ${searchQuery}`);
     }
-    // For general knowledge queries that might need web search
-    else if (isInfoQuery(message)) {
-        askToSearch(message);
-    } 
-    // For any other unhandled query, suggest a web search
+    // For any other query, perform real-time search
     else {
-        speak(`I don't have a direct answer for that. Would you like me to search online?`);
-        askToSearch(message);
+        performWebSearch(message);
     }
 }

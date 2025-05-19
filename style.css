@@ -51,9 +51,11 @@
     justify-content: center;
     align-items: center;
     width: 40vw;
-    height: 50px;
+    height: auto;
+    min-height: 50px;
     border-radius: 20px;
     background: rgb(202 253 255 / 50%);
+    padding: 10px;
 }
 
 .main .input .talk {
@@ -78,4 +80,7 @@
     color: #aed0d0;
     font-size: 15px;
     margin-right: 20px;
+    word-wrap: break-word;
+    max-width: calc(40vw - 70px);
+    line-height: 1.4;
 }
