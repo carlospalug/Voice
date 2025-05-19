@@ -32,15 +32,96 @@ window.addEventListener('load', () => {
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = new SpeechRecognition();
 
+// Enable continuous recognition
+recognition.continuous = true;
+// Enable interim results to get partial recognition results
+recognition.interimResults = true;
+// Set language to English
+recognition.lang = 'en-US';
+
+// Variables for silence detection
+let silenceTimer;
+let isSpeechActive = false;
+let lastTranscript = '';
+let silenceTimeout = 5000; // 5 seconds of silence before stopping
+
+// Handle speech recognition results
 recognition.onresult = (event) => {
-    const currentIndex = event.resultIndex;
-    const transcript = event.results[currentIndex][0].transcript;
-    content.textContent = transcript;
-    takeCommand(transcript.toLowerCase());
+    clearTimeout(silenceTimer); // Reset silence timer whenever we get a result
+    
+    let interimTranscript = '';
+    let finalTranscript = lastTranscript;
+    
+    // Process all results
+    for (let i = 0; i < event.results.length; i++) {
+        const result = event.results[i];
+        
+        if (result.isFinal) {
+            finalTranscript += result[0].transcript + ' ';
+            lastTranscript = finalTranscript;
+        } else {
+            interimTranscript += result[0].transcript;
+        }
+    }
+    
+    // Update content with combined transcript
+    if (interimTranscript) {
+        content.textContent = finalTranscript + ' ' + interimTranscript + ' (listening...)';
+        isSpeechActive = true;
+    } else if (finalTranscript) {
+        content.textContent = finalTranscript;
+    }
+    
+    // Set a timer to detect silence
+    silenceTimer = setTimeout(() => {
+        if (isSpeechActive) {
+            isSpeechActive = false;
+            recognition.stop();
+            
+            // Process the final transcript
+            if (lastTranscript.trim()) {
+                content.textContent = lastTranscript.trim();
+                takeCommand(lastTranscript.toLowerCase().trim());
+                lastTranscript = '';
+            }
+        }
+    }, silenceTimeout);
 };
 
-btn.addEventListener('click', () => {
+// Handle speech recognition start
+recognition.onstart = () => {
     content.textContent = "Listening...";
+    // Reset speech tracking variables
+    isSpeechActive = false;
+    lastTranscript = '';
+};
+
+// Handle speech recognition end
+recognition.onend = () => {
+    // Only restart if we stopped because of silence threshold
+    // and not because of a command completion
+    if (isSpeechActive) {
+        recognition.start();
+    }
+};
+
+// Handle speech recognition errors
+recognition.onerror = (event) => {
+    console.error("Speech recognition error:", event.error);
+    content.textContent = `Error: ${event.error}. Try again.`;
+    isSpeechActive = false;
+};
+
+// Start listening when talk button is clicked
+btn.addEventListener('click', () => {
+    // Stop any ongoing recognition before starting a new one
+    recognition.abort();
+    // Clear any existing timeout
+    clearTimeout(silenceTimer);
+    // Reset variables
+    lastTranscript = '';
+    isSpeechActive = false;
+    // Start recognition
     recognition.start();
 });
 
