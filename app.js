@@ -1,6 +1,32 @@
 const btn = document.querySelector('.talk');
 const content = document.querySelector('.content');
 
+// Global variable to store the Universal Sentence Encoder model
+let useModel = null;
+
+// Load Universal Sentence Encoder model when the page loads
+async function loadModel() {
+    try {
+        content.textContent = "Loading AI capabilities...";
+        // Load the Universal Sentence Encoder model
+        useModel = await use.load();
+        content.textContent = "AI capabilities ready!";
+        console.log("Universal Sentence Encoder model loaded successfully");
+    } catch (error) {
+        console.error("Error loading USE model:", error);
+        content.textContent = "Failed to load some AI capabilities. Basic functions still available.";
+    }
+}
+
+// Call loadModel when the page loads
+window.addEventListener('load', async () => {
+    speak("Initializing CENTGPT...");
+    wishMe();
+    
+    // Load the language model in the background
+    loadModel();
+});
+
 function speak(text) {
     const text_speak = new SpeechSynthesisUtterance(text);
 
@@ -24,11 +50,6 @@ function wishMe() {
     }
 }
 
-window.addEventListener('load', () => {
-    speak("Initializing CENTGPT...");
-    wishMe();
-});
-
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = new SpeechRecognition();
 
@@ -44,104 +65,147 @@ btn.addEventListener('click', () => {
     recognition.start();
 });
 
-// Simple knowledge base for direct answers
-const knowledgeBase = {
-    "who are you": "I am CENTGPT, your virtual assistant. I can answer questions, provide information, and help you navigate the web.",
-    "what can you do": "I can answer basic questions, tell you the time and date, open websites, search for information, and have simple conversations.",
-    "how are you": "I'm functioning well, thank you for asking. How can I assist you today?",
-    "what is ai": "Artificial Intelligence or AI refers to systems or machines that mimic human intelligence to perform tasks and can iteratively improve themselves based on the information they collect.",
-    "what is machine learning": "Machine Learning is a subset of AI that enables systems to learn from data, identify patterns, and make decisions with minimal human intervention.",
-    "who created you": "I was created as a virtual assistant project called CENTGPT.",
-    "tell me a joke": "Why don't scientists trust atoms? Because they make up everything!",
-    "another joke": "Why did the JavaScript developer wear glasses? Because he couldn't C#!",
-    "thank you": "You're welcome! Is there anything else I can help you with?",
-    "goodbye": "Goodbye! Have a great day. Call me again if you need assistance.",
-    "bye": "Goodbye! Have a great day. Call me again if you need assistance.",
-    "what is your name": "My name is CENTGPT, your virtual assistant.",
-    "who built you": "I was built as a voice-based virtual assistant project.",
-    "what's your purpose": "My purpose is to assist you with information, answer questions, and help you with basic tasks.",
-    "tell me another joke": "Why was the JavaScript developer sad? Because he didn't Node how to Express himself!",
-    "what is the weather": "I'm unable to access real-time weather information at the moment. Would you like me to search for a weather website for you?",
-    "how old are you": "I don't have an age as I'm a virtual assistant. I was created recently though!",
-    "help": "I can help with various tasks. You can ask me questions, request information, open websites, get the time or date, and more. Just speak naturally and I'll try to assist you."
-};
-
-// Enhanced knowledge domains to generate more relevant responses
-const knowledgeDomains = {
-    technology: {
-        keywords: ["computer", "programming", "software", "hardware", "app", "internet", "code", "tech", "algorithm", "data", "website", "digital", "electronic", "device", "mobile", "laptop", "server", "cloud", "blockchain", "virtual", "cyber"],
-        facts: [
-            "plays a crucial role in modern society and continues to evolve rapidly",
-            "has transformed how people work, communicate, and access information",
-            "enables innovations across almost every industry and field",
-            "requires continuous learning as new developments emerge frequently",
-            "combines hardware and software components to solve problems",
-            "can be both beneficial and challenging for society"
-        ]
-    },
-    science: {
-        keywords: ["physics", "chemistry", "biology", "experiment", "theory", "laboratory", "research", "scientific", "molecule", "atom", "cell", "organism", "gene", "evolution", "quantum", "relativity", "gravity", "energy", "reaction", "hypothesis"],
-        facts: [
-            "is based on empirical evidence and systematic experimentation",
-            "works through the scientific method of observation, hypothesis, and testing",
-            "has established fundamental laws that explain natural phenomena",
-            "continues to expand human understanding of the universe",
-            "relies on peer review and reproducibility of results",
-            "often builds on previous discoveries to advance knowledge"
-        ]
-    },
-    history: {
-        keywords: ["ancient", "medieval", "modern", "century", "war", "civilization", "empire", "king", "queen", "president", "dynasty", "revolution", "artifact", "archaeology", "historical", "era", "period", "movement", "culture", "nation"],
-        facts: [
-            "provides valuable context for understanding current events and societies",
-            "is studied through primary sources, artifacts, and written records",
-            "reveals patterns in human behavior and societal development",
-            "encompasses political, social, economic, and cultural developments",
-            "has been interpreted differently across times and places",
-            "helps us learn from past successes and failures"
-        ]
-    },
-    arts: {
-        keywords: ["music", "painting", "literature", "film", "theater", "dance", "sculpture", "poetry", "novel", "art", "creative", "artist", "author", "director", "composer", "design", "performance", "aesthetic", "style", "genre"],
-        facts: [
-            "serves as a form of expression and communication across cultures",
-            "reflects and influences the societies in which it's created",
-            "encompasses many forms including visual, performing, and literary works",
-            "often explores themes of human experience and emotion",
-            "has evolved through different movements and periods",
-            "can be interpreted subjectively by different audiences"
-        ]
-    },
-    business: {
-        keywords: ["economy", "finance", "market", "company", "corporation", "startup", "entrepreneur", "investment", "profit", "stock", "trade", "industry", "management", "strategy", "product", "service", "customer", "employment", "budget", "revenue"],
-        facts: [
-            "drives economic growth and development in societies",
-            "operates in increasingly global and interconnected markets",
-            "requires balancing profit motives with ethical considerations",
-            "involves various functions such as marketing, finance, and operations",
-            "has been transformed by technological innovations",
-            "faces challenges of sustainability and social responsibility"
-        ]
-    },
-    health: {
-        keywords: ["medical", "disease", "treatment", "doctor", "hospital", "patient", "drug", "therapy", "mental", "physical", "exercise", "diet", "nutrition", "wellness", "vaccine", "surgery", "diagnosis", "prevention", "healthcare", "medicine"],
-        facts: [
-            "encompasses physical, mental, and social well-being",
-            "is influenced by lifestyle choices, genetics, and environmental factors",
-            "advances through medical research and technological innovation",
-            "requires both preventive measures and treatment approaches",
-            "varies in access and quality across different regions",
-            "includes traditional practices alongside modern medicine"
-        ]
-    }
-};
-
 // Function to check if message is explicitly asking to use Google
 function isExplicitGoogleRequest(message) {
     return message.includes('use google to') || 
            message.includes('search google for') || 
            message.includes('google search for') ||
            message.includes('look up on google');
+}
+
+// Function to calculate cosine similarity between two vectors
+function cosineSimilarity(vecA, vecB) {
+    let dotProduct = 0;
+    let normA = 0;
+    let normB = 0;
+    
+    for (let i = 0; i < vecA.length; i++) {
+        dotProduct += vecA[i] * vecB[i];
+        normA += vecA[i] * vecA[i];
+        normB += vecB[i] * vecB[i];
+    }
+    
+    normA = Math.sqrt(normA);
+    normB = Math.sqrt(normB);
+    
+    if (normA === 0 || normB === 0) {
+        return 0;
+    }
+    
+    return dotProduct / (normA * normB);
+}
+
+// Function to encode text using the Universal Sentence Encoder
+async function encodeText(text) {
+    if (!useModel) {
+        console.warn("Universal Sentence Encoder model not loaded");
+        return null;
+    }
+    
+    try {
+        const embeddings = await useModel.embed([text]);
+        const embeddingArray = await embeddings.array();
+        return embeddingArray[0]; // Return the embedding for the first (and only) input
+    } catch (error) {
+        console.error("Error encoding text:", error);
+        return null;
+    }
+}
+
+// Function to find the most similar text in the embedding data using vector similarity
+async function findMostSimilarEmbedding(query) {
+    // If the model isn't loaded, we can't do embedding-based search
+    if (!useModel) {
+        console.warn("Model not loaded, using fallback search method");
+        return null;
+    }
+    
+    try {
+        // Encode the query
+        const queryEmbedding = await encodeText(query);
+        
+        if (!queryEmbedding) {
+            return null;
+        }
+        
+        let bestMatch = null;
+        let highestSimilarity = -1;
+        
+        // Find the most similar embedding in our data
+        for (const item of embeddingData) {
+            const similarity = cosineSimilarity(queryEmbedding, item.embedding);
+            
+            if (similarity > highestSimilarity) {
+                highestSimilarity = similarity;
+                bestMatch = item;
+            }
+        }
+        
+        // Only return a match if it's above a certain threshold
+        if (highestSimilarity > 0.75) {
+            return {
+                text: bestMatch.text,
+                response: bestMatch.response,
+                similarity: highestSimilarity
+            };
+        } else {
+            return null;
+        }
+    } catch (error) {
+        console.error("Error finding similar embedding:", error);
+        return null;
+    }
+}
+
+// Function to find semantic matches in the question-answer pairs
+function findSemanticMatch(query) {
+    query = query.toLowerCase();
+    
+    // Try direct keyword matching first
+    for (const pair of questionAnswerPairs) {
+        const questionLower = pair.question.toLowerCase();
+        
+        // Check for significant word overlap
+        const queryWords = query.split(/\s+/).filter(word => word.length > 3);
+        const questionWords = questionLower.split(/\s+/).filter(word => word.length > 3);
+        
+        let matchCount = 0;
+        for (const word of queryWords) {
+            if (questionWords.includes(word)) {
+                matchCount++;
+            }
+        }
+        
+        // If 50% or more of significant words match, consider it a semantic match
+        if (matchCount >= Math.max(1, Math.floor(queryWords.length * 0.5))) {
+            return pair.answer;
+        }
+        
+        // Also check for direct phrase containment
+        if (questionLower.includes(query) || query.includes(questionLower)) {
+            return pair.answer;
+        }
+    }
+    
+    // Check if query is asking for definition or explanation of a concept
+    const isDefinitionQuery = query.includes("what is") || 
+                              query.includes("define") || 
+                              query.includes("meaning of") ||
+                              query.includes("explain");
+    
+    if (isDefinitionQuery) {
+        // Extract the concept being asked about
+        let concept = query.replace(/what is|define|meaning of|explain/gi, "").trim();
+        
+        // Search through questionAnswerPairs for the concept
+        for (const pair of questionAnswerPairs) {
+            if (pair.question.toLowerCase().includes(concept)) {
+                return pair.answer;
+            }
+        }
+    }
+    
+    return null;
 }
 
 // Function to perform a Wikipedia search and get a summary
@@ -177,8 +241,18 @@ async function searchWikipedia(query) {
         tempDiv.innerHTML = extract;
         extract = tempDiv.textContent || tempDiv.innerText || "";
         
-        // Limit to a reasonable length
-        const summary = extract.split('. ').slice(0, 3).join('. ') + '.';
+        // Limit to a reasonable length but ensure we don't cut sentences in half
+        let summary = "";
+        const sentences = extract.split('. ');
+        
+        // Take at least 3 sentences, but ensure we don't exceed a reasonable length
+        for (let i = 0; i < Math.min(5, sentences.length); i++) {
+            if (summary.length + sentences[i].length <= 500) {
+                summary += sentences[i] + '. ';
+            } else {
+                break;
+            }
+        }
         
         return {
             source: 'Wikipedia',
@@ -197,6 +271,7 @@ async function searchWikipedia(query) {
 const corsProxies = [
     (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
     (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    (url) => `https://proxy.cors.sh/${url}`,
     (url) => `https://cors-anywhere.herokuapp.com/${url}`
 ];
 
@@ -374,7 +449,7 @@ async function searchNews(query) {
     }
 }
 
-// Function to generate a context-aware simulated knowledge graph response
+// Enhanced function to generate a context-aware knowledge graph response
 function generateKnowledgeGraphResponse(query) {
     // Clean the query and extract main terms
     const cleanQuery = query.replace(/what is|who is|where is|when is|why is|how does|can you tell me about/gi, '').trim();
@@ -451,45 +526,110 @@ function generateKnowledgeGraphResponse(query) {
     };
 }
 
-// Function to detect the query intent for better response selection
+// Enhanced function to detect the query intent for better response selection
 function detectQueryIntent(query) {
     const lowerQuery = query.toLowerCase();
-    
-    if (lowerQuery.includes('how to') || lowerQuery.includes('steps to') || lowerQuery.includes('guide for')) {
-        return 'how-to';
-    }
-    
-    if (lowerQuery.includes('meaning of') || lowerQuery.includes('define') || lowerQuery.includes('what is') || lowerQuery.includes('what are')) {
-        return 'definition';
-    }
-    
-    if (lowerQuery.includes('history of') || lowerQuery.includes('origin of') || lowerQuery.includes('when did') || lowerQuery.includes('when was')) {
-        return 'history';
-    }
-    
-    if (lowerQuery.includes('difference between') || lowerQuery.includes('compare') || lowerQuery.includes('versus') || lowerQuery.includes('vs')) {
-        return 'comparison';
-    }
-    
-    if (lowerQuery.includes('best') || lowerQuery.includes('top') || lowerQuery.includes('recommended') || lowerQuery.includes('most popular')) {
-        return 'recommendation';
-    }
-    
-    if (lowerQuery.includes('news') || lowerQuery.includes('latest') || lowerQuery.includes('recent') || lowerQuery.includes('update')) {
-        return 'news';
+
+    // Define patterns for different intent types
+    const intentPatterns = [
+        {
+            intent: 'how-to',
+            patterns: ['how to', 'how do i', 'how can i', 'steps to', 'guide for', 'tutorial', 'instructions', 'teach me']
+        },
+        {
+            intent: 'definition',
+            patterns: ['what is', 'what are', 'define', 'meaning of', 'definition of', 'explain', 'tell me about', 'describe']
+        },
+        {
+            intent: 'history',
+            patterns: ['history of', 'origin of', 'when did', 'when was', 'how did', 'development of', 'evolution of', 'background of']
+        },
+        {
+            intent: 'comparison',
+            patterns: ['difference between', 'compare', 'versus', 'vs', 'similarities', 'differences', 'which is better', 'contrast']
+        },
+        {
+            intent: 'recommendation',
+            patterns: ['best', 'top', 'recommended', 'most popular', 'suggest', 'advice', 'should i', 'recommend', 'worth']
+        },
+        {
+            intent: 'news',
+            patterns: ['news', 'latest', 'recent', 'update', 'what happened', 'current events', 'today']
+        },
+        {
+            intent: 'location',
+            patterns: ['where is', 'location of', 'find', 'nearby', 'closest', 'directions to', 'how to get to']
+        },
+        {
+            intent: 'time',
+            patterns: ['when is', 'time of', 'schedule', 'duration', 'how long', 'opening hours', 'deadline']
+        },
+        {
+            intent: 'reason',
+            patterns: ['why is', 'why do', 'reason for', 'cause of', 'explain why', 'how come']
+        },
+        {
+            intent: 'personal',
+            patterns: ['i am', 'my', 'i feel', 'i need', 'help me', 'i want', 'for me', 'i would like']
+        }
+    ];
+
+    // Check for patterns in the query
+    for (const intentType of intentPatterns) {
+        for (const pattern of intentType.patterns) {
+            if (lowerQuery.includes(pattern)) {
+                return intentType.intent;
+            }
+        }
     }
     
     return 'general-information';
 }
 
-// Function to get answers from multiple sources
+// Function to get answers from multiple sources - now enhanced with local semantic search
 async function getMultiSourceAnswer(query) {
     content.textContent = "Searching for information...";
     
     // Detect the query intent for customizing responses
     const queryIntent = detectQueryIntent(query);
     
-    // Try Wikipedia first
+    // First, try to find a direct answer in the knowledge base
+    const directAnswer = knowledgeBase[query] || 
+                         Object.keys(knowledgeBase).find(key => query.includes(key) && knowledgeBase[key]);
+    
+    if (directAnswer) {
+        const answer = typeof directAnswer === 'string' ? directAnswer : knowledgeBase[directAnswer];
+        content.textContent = answer;
+        speak(answer);
+        return;
+    }
+    
+    // Second, try semantic matching from our curated question-answer pairs
+    const semanticMatch = findSemanticMatch(query);
+    
+    if (semanticMatch) {
+        content.textContent = semanticMatch;
+        speak(semanticMatch);
+        return;
+    }
+    
+    // Third, try vector embedding search for semantic similarity if the model is loaded
+    if (useModel) {
+        try {
+            const embeddingMatch = await findMostSimilarEmbedding(query);
+            
+            if (embeddingMatch) {
+                content.textContent = embeddingMatch.response;
+                speak(embeddingMatch.response);
+                return;
+            }
+        } catch (error) {
+            console.error("Error in embedding search:", error);
+            // Continue with other search methods if embedding search fails
+        }
+    }
+    
+    // Fourth, try Wikipedia for more comprehensive information
     const wikiResult = await searchWikipedia(query);
     
     // If we got a Wikipedia result, use it
@@ -599,6 +739,18 @@ async function getMultiSourceAnswer(query) {
             break;
         case 'recommendation':
             responseIntro = `Regarding ${query.replace(/best|top|recommended|most popular/gi, '').trim()}, my knowledge graph suggests: `;
+            break;
+        case 'reason':
+            responseIntro = `Regarding why ${query.replace(/why is|why do|reason for|cause of/gi, '').trim()}, my knowledge base indicates: `;
+            break;
+        case 'location':
+            responseIntro = `About the location of ${query.replace(/where is|location of|find/gi, '').trim()}, my knowledge graph shows: `;
+            break;
+        case 'time':
+            responseIntro = `Regarding the timing of ${query.replace(/when is|time of|schedule/gi, '').trim()}, according to my knowledge: `;
+            break;
+        case 'personal':
+            responseIntro = `Based on what you've shared about ${query.replace(/i am|my|i feel|i need/gi, '').trim()}, I can suggest: `;
             break;
         default:
             responseIntro = '';
