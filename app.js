@@ -78,7 +78,7 @@ function takeCommand(message) {
         speak(finalText);
     } else if (message.includes('what is the date')) {
         const date = new Date().toLocaleString(undefined, { month: "short", day: "numeric" });
-        const finalText = "Today's date is " + date;
+        const finalText = "The date is " + date;
         speak(finalText);
     } else if (message.includes('calculator')) {
         window.open('Calculator:///');
