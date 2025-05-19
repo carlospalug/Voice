@@ -123,32 +123,106 @@ async function searchWikipedia(query) {
     }
 }
 
-// Function to search for general information using multiple sources
+// Multiple CORS proxy options for redundancy
+const corsProxies = [
+    (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    (url) => `https://cors-anywhere.herokuapp.com/${url}`
+];
+
+// Function to try multiple proxies until one works
+async function fetchWithCorsProxy(url) {
+    let lastError = null;
+    
+    // Try each proxy in order
+    for (const proxyFn of corsProxies) {
+        try {
+            const proxyUrl = proxyFn(url);
+            const response = await fetch(proxyUrl, { timeout: 5000 });
+            
+            if (response.ok) {
+                return await response.json();
+            }
+        } catch (error) {
+            lastError = error;
+            console.warn(`Proxy failed: ${error.message}. Trying next proxy...`);
+            continue; // Try the next proxy
+        }
+    }
+    
+    // If we get here, all proxies failed
+    throw new Error(lastError || "All CORS proxies failed");
+}
+
+// Function to search for general information using multiple sources with enhanced CORS handling
 async function searchGeneralInfo(query) {
     try {
-        // We'll use the DuckDuckGo Instant Answer API for general searches
+        // First try with multiple CORS proxy options
         const cleanQuery = query.replace(/what is|who is|where is|tell me about|information on/gi, '').trim();
+        
+        // Try to use the DuckDuckGo API first
         const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(cleanQuery)}&format=json&t=CENTGPT`;
         
-        // Use a proxy to avoid CORS issues
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(ddgUrl)}`;
+        try {
+            const data = await fetchWithCorsProxy(ddgUrl);
+            
+            if (data && data.AbstractText) {
+                return {
+                    source: 'DuckDuckGo',
+                    title: data.Heading || cleanQuery,
+                    summary: data.AbstractText,
+                    url: data.AbstractURL
+                };
+            }
+        } catch (error) {
+            console.error("All DuckDuckGo proxies failed:", error);
+            // Continue to backup method
+        }
         
-        const response = await fetch(proxyUrl);
-        const data = await response.json();
+        // Backup method: Wikipedia API for related topics if direct search fails
+        const wikiRelatedUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srlimit=5&format=json&origin=*&srsearch=${encodeURIComponent(cleanQuery)}`;
+        const relatedResponse = await fetch(wikiRelatedUrl);
+        const relatedData = await relatedResponse.json();
         
-        if (data && data.AbstractText) {
+        if (relatedData.query.search.length > 0) {
+            // Get snippets from top 3 related results
+            const relatedInfo = relatedData.query.search.slice(0, 3).map(item => {
+                // Remove HTML tags from snippet
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = item.snippet;
+                return {
+                    title: item.title,
+                    snippet: tempDiv.textContent || tempDiv.innerText || ""
+                };
+            });
+            
+            // Compile a summary from related information
+            const summary = `Here's what I found about ${cleanQuery}: ${relatedInfo.map(info => `${info.title}: ${info.snippet}`).join('. ')}`;
+            
             return {
-                source: 'DuckDuckGo',
-                title: data.Heading || cleanQuery,
-                summary: data.AbstractText,
-                url: data.AbstractURL
+                source: 'Wikipedia Related Topics',
+                title: `Information about ${cleanQuery}`,
+                summary: summary,
+                url: `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(cleanQuery)}`
             };
         }
         
-        return null;
+        // If all else fails, use a fallback source - Wikipedia's "Special:Search" results page
+        return {
+            source: 'Search Results',
+            title: `Information about ${cleanQuery}`,
+            summary: `I don't have specific information about "${cleanQuery}" in my knowledge base. I can show you search results from reliable sources that might help.`,
+            url: `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(cleanQuery)}`
+        };
+        
     } catch (error) {
         console.error("Error with general search:", error);
-        return null;
+        return {
+            source: 'Error',
+            title: `Search Error`,
+            summary: `I encountered a problem searching for "${query}". This might be due to network connectivity issues or CORS restrictions. Would you like me to try another source?`,
+            isError: true
+        };
     }
 }
 
@@ -259,6 +333,22 @@ async function getMultiSourceAnswer(query) {
     const generalResult = await searchGeneralInfo(query);
     
     if (generalResult) {
+        // If it's an error response, handle differently
+        if (generalResult.isError) {
+            content.textContent = generalResult.summary;
+            speak(generalResult.summary);
+            
+            setTimeout(() => {
+                speak("Would you like me to try a direct Google search instead? Say yes or no.");
+                window.pendingSearch = {
+                    query: query,
+                    type: 'google'
+                };
+            }, 1000 * (generalResult.summary.split(' ').length / 3));
+            
+            return;
+        }
+        
         content.textContent = `${generalResult.summary} (Source: ${generalResult.source})`;
         speak(generalResult.summary);
         
@@ -376,8 +466,8 @@ function takeCommand(message) {
                          Object.keys(knowledgeBase).find(key => message.includes(key) && knowledgeBase[key]);
     
     if (directAnswer) {
-        speak(directAnswer);
-        content.textContent = directAnswer;
+        speak(typeof directAnswer === 'string' ? directAnswer : knowledgeBase[directAnswer]);
+        content.textContent = typeof directAnswer === 'string' ? directAnswer : knowledgeBase[directAnswer];
         return;
     }
     
