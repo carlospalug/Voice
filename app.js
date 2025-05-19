@@ -1,32 +1,6 @@
 const btn = document.querySelector('.talk');
 const content = document.querySelector('.content');
 
-// Global variable to store the Universal Sentence Encoder model
-let useModel = null;
-
-// Load Universal Sentence Encoder model when the page loads
-async function loadModel() {
-    try {
-        content.textContent = "Loading AI capabilities...";
-        // Load the Universal Sentence Encoder model
-        useModel = await use.load();
-        content.textContent = "AI capabilities ready!";
-        console.log("Universal Sentence Encoder model loaded successfully");
-    } catch (error) {
-        console.error("Error loading USE model:", error);
-        content.textContent = "Failed to load some AI capabilities. Basic functions still available.";
-    }
-}
-
-// Call loadModel when the page loads
-window.addEventListener('load', async () => {
-    speak("Initializing CENTGPT...");
-    wishMe();
-    
-    // Load the language model in the background
-    loadModel();
-});
-
 function speak(text) {
     const text_speak = new SpeechSynthesisUtterance(text);
 
@@ -50,6 +24,11 @@ function wishMe() {
     }
 }
 
+window.addEventListener('load', () => {
+    speak("Initializing CENTGPT...");
+    wishMe();
+});
+
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = new SpeechRecognition();
 
@@ -65,147 +44,27 @@ btn.addEventListener('click', () => {
     recognition.start();
 });
 
+// Simple knowledge base for direct answers
+const knowledgeBase = {
+    "who are you": "I am CENTGPT, your virtual assistant. I can answer questions, provide information, and help you navigate the web.",
+    "what can you do": "I can answer basic questions, tell you the time and date, open websites, search for information, and have simple conversations.",
+    "how are you": "I'm functioning well, thank you for asking. How can I assist you today?",
+    "what is ai": "Artificial Intelligence or AI refers to systems or machines that mimic human intelligence to perform tasks and can iteratively improve themselves based on the information they collect.",
+    "what is machine learning": "Machine Learning is a subset of AI that enables systems to learn from data, identify patterns, and make decisions with minimal human intervention.",
+    "who created you": "I was created as a virtual assistant project called CENTGPT.",
+    "tell me a joke": "Why don't scientists trust atoms? Because they make up everything!",
+    "another joke": "Why did the JavaScript developer wear glasses? Because he couldn't C#!",
+    "thank you": "You're welcome! Is there anything else I can help you with?",
+    "goodbye": "Goodbye! Have a great day. Call me again if you need assistance.",
+    "bye": "Goodbye! Have a great day. Call me again if you need assistance."
+};
+
 // Function to check if message is explicitly asking to use Google
 function isExplicitGoogleRequest(message) {
     return message.includes('use google to') || 
            message.includes('search google for') || 
            message.includes('google search for') ||
            message.includes('look up on google');
-}
-
-// Function to calculate cosine similarity between two vectors
-function cosineSimilarity(vecA, vecB) {
-    let dotProduct = 0;
-    let normA = 0;
-    let normB = 0;
-    
-    for (let i = 0; i < vecA.length; i++) {
-        dotProduct += vecA[i] * vecB[i];
-        normA += vecA[i] * vecA[i];
-        normB += vecB[i] * vecB[i];
-    }
-    
-    normA = Math.sqrt(normA);
-    normB = Math.sqrt(normB);
-    
-    if (normA === 0 || normB === 0) {
-        return 0;
-    }
-    
-    return dotProduct / (normA * normB);
-}
-
-// Function to encode text using the Universal Sentence Encoder
-async function encodeText(text) {
-    if (!useModel) {
-        console.warn("Universal Sentence Encoder model not loaded");
-        return null;
-    }
-    
-    try {
-        const embeddings = await useModel.embed([text]);
-        const embeddingArray = await embeddings.array();
-        return embeddingArray[0]; // Return the embedding for the first (and only) input
-    } catch (error) {
-        console.error("Error encoding text:", error);
-        return null;
-    }
-}
-
-// Function to find the most similar text in the embedding data using vector similarity
-async function findMostSimilarEmbedding(query) {
-    // If the model isn't loaded, we can't do embedding-based search
-    if (!useModel) {
-        console.warn("Model not loaded, using fallback search method");
-        return null;
-    }
-    
-    try {
-        // Encode the query
-        const queryEmbedding = await encodeText(query);
-        
-        if (!queryEmbedding) {
-            return null;
-        }
-        
-        let bestMatch = null;
-        let highestSimilarity = -1;
-        
-        // Find the most similar embedding in our data
-        for (const item of embeddingData) {
-            const similarity = cosineSimilarity(queryEmbedding, item.embedding);
-            
-            if (similarity > highestSimilarity) {
-                highestSimilarity = similarity;
-                bestMatch = item;
-            }
-        }
-        
-        // Only return a match if it's above a certain threshold
-        if (highestSimilarity > 0.75) {
-            return {
-                text: bestMatch.text,
-                response: bestMatch.response,
-                similarity: highestSimilarity
-            };
-        } else {
-            return null;
-        }
-    } catch (error) {
-        console.error("Error finding similar embedding:", error);
-        return null;
-    }
-}
-
-// Function to find semantic matches in the question-answer pairs
-function findSemanticMatch(query) {
-    query = query.toLowerCase();
-    
-    // Try direct keyword matching first
-    for (const pair of questionAnswerPairs) {
-        const questionLower = pair.question.toLowerCase();
-        
-        // Check for significant word overlap
-        const queryWords = query.split(/\s+/).filter(word => word.length > 3);
-        const questionWords = questionLower.split(/\s+/).filter(word => word.length > 3);
-        
-        let matchCount = 0;
-        for (const word of queryWords) {
-            if (questionWords.includes(word)) {
-                matchCount++;
-            }
-        }
-        
-        // If 50% or more of significant words match, consider it a semantic match
-        if (matchCount >= Math.max(1, Math.floor(queryWords.length * 0.5))) {
-            return pair.answer;
-        }
-        
-        // Also check for direct phrase containment
-        if (questionLower.includes(query) || query.includes(questionLower)) {
-            return pair.answer;
-        }
-    }
-    
-    // Check if query is asking for definition or explanation of a concept
-    const isDefinitionQuery = query.includes("what is") || 
-                              query.includes("define") || 
-                              query.includes("meaning of") ||
-                              query.includes("explain");
-    
-    if (isDefinitionQuery) {
-        // Extract the concept being asked about
-        let concept = query.replace(/what is|define|meaning of|explain/gi, "").trim();
-        
-        // Search through questionAnswerPairs for the concept
-        for (const pair of questionAnswerPairs) {
-            if (pair.question.toLowerCase().includes(concept)) {
-                return pair.answer;
-            }
-        }
-    }
-    
-    return null;
 }
 
 // Function to perform a Wikipedia search and get a summary
@@ -241,18 +100,8 @@ async function searchWikipedia(query) {
         tempDiv.innerHTML = extract;
         extract = tempDiv.textContent || tempDiv.innerText || "";
         
-        // Limit to a reasonable length but ensure we don't cut sentences in half
-        let summary = "";
-        const sentences = extract.split('. ');
-        
-        // Take at least 3 sentences, but ensure we don't exceed a reasonable length
-        for (let i = 0; i < Math.min(5, sentences.length); i++) {
-            if (summary.length + sentences[i].length <= 500) {
-                summary += sentences[i] + '. ';
-            } else {
-                break;
-            }
-        }
+        // Limit to a reasonable length
+        const summary = extract.split('. ').slice(0, 3).join('. ') + '.';
         
         return {
             source: 'Wikipedia',
@@ -267,107 +116,32 @@ async function searchWikipedia(query) {
     }
 }
 
-// Multiple CORS proxy options for redundancy
-const corsProxies = [
-    (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-    (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    (url) => `https://proxy.cors.sh/${url}`,
-    (url) => `https://cors-anywhere.herokuapp.com/${url}`
-];
-
-// Function to try multiple proxies until one works
-async function fetchWithCorsProxy(url) {
-    let lastError = null;
-    
-    // Try each proxy in order
-    for (const proxyFn of corsProxies) {
-        try {
-            const proxyUrl = proxyFn(url);
-            const response = await fetch(proxyUrl, { timeout: 5000 });
-            
-            if (response.ok) {
-                return await response.json();
-            }
-        } catch (error) {
-            lastError = error;
-            console.warn(`Proxy failed: ${error.message}. Trying next proxy...`);
-            continue; // Try the next proxy
-        }
-    }
-    
-    // If we get here, all proxies failed
-    throw new Error(lastError || "All CORS proxies failed");
-}
-
-// Function to search for general information using multiple sources with enhanced CORS handling
+// Function to search for general information using multiple sources
 async function searchGeneralInfo(query) {
     try {
-        // First try with multiple CORS proxy options
+        // We'll use the DuckDuckGo Instant Answer API for general searches
         const cleanQuery = query.replace(/what is|who is|where is|tell me about|information on/gi, '').trim();
-        
-        // Try to use the DuckDuckGo API first
         const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(cleanQuery)}&format=json&t=CENTGPT`;
         
-        try {
-            const data = await fetchWithCorsProxy(ddgUrl);
-            
-            if (data && data.AbstractText) {
-                return {
-                    source: 'DuckDuckGo',
-                    title: data.Heading || cleanQuery,
-                    summary: data.AbstractText,
-                    url: data.AbstractURL
-                };
-            }
-        } catch (error) {
-            console.error("All DuckDuckGo proxies failed:", error);
-            // Continue to backup method
-        }
+        // Use a proxy to avoid CORS issues
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(ddgUrl)}`;
         
-        // Backup method: Wikipedia API for related topics if direct search fails
-        const wikiRelatedUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srlimit=5&format=json&origin=*&srsearch=${encodeURIComponent(cleanQuery)}`;
-        const relatedResponse = await fetch(wikiRelatedUrl);
-        const relatedData = await relatedResponse.json();
+        const response = await fetch(proxyUrl);
+        const data = await response.json();
         
-        if (relatedData.query.search.length > 0) {
-            // Get snippets from top 3 related results
-            const relatedInfo = relatedData.query.search.slice(0, 3).map(item => {
-                // Remove HTML tags from snippet
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = item.snippet;
-                return {
-                    title: item.title,
-                    snippet: tempDiv.textContent || tempDiv.innerText || ""
-                };
-            });
-            
-            // Compile a summary from related information
-            const summary = `Here's what I found about ${cleanQuery}: ${relatedInfo.map(info => `${info.title}: ${info.snippet}`).join('. ')}`;
-            
+        if (data && data.AbstractText) {
             return {
-                source: 'Wikipedia Related Topics',
-                title: `Information about ${cleanQuery}`,
-                summary: summary,
-                url: `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(cleanQuery)}`
+                source: 'DuckDuckGo',
+                title: data.Heading || cleanQuery,
+                summary: data.AbstractText,
+                url: data.AbstractURL
             };
         }
         
-        // If all else fails, use a fallback source - Wikipedia's "Special:Search" results page
-        return {
-            source: 'Search Results',
-            title: `Information about ${cleanQuery}`,
-            summary: `I don't have specific information about "${cleanQuery}" in my knowledge base. I can show you search results from reliable sources that might help.`,
-            url: `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(cleanQuery)}`
-        };
-        
+        return null;
     } catch (error) {
         console.error("Error with general search:", error);
-        return {
-            source: 'Error',
-            title: `Search Error`,
-            summary: `I encountered a problem searching for "${query}". This might be due to network connectivity issues or CORS restrictions. Would you like me to try another source?`,
-            isError: true
-        };
+        return null;
     }
 }
 
@@ -375,261 +149,33 @@ async function searchGeneralInfo(query) {
 async function searchNews(query) {
     try {
         const newsQuery = query.replace(/news about|latest on|updates on|what's happening with/gi, '').trim();
+        // Using a free news API
+        const newsUrl = `https://gnews.io/api/v4/search?q=${encodeURIComponent(newsQuery)}&token=sample-token&lang=en`;
         
-        // To use this properly, you need to sign up for a free API key at https://gnews.io/
-        // Replace YOUR_API_KEY with your actual GNews API key
-        const apiKey = "YOUR_API_KEY"; // You'll need to replace this with a real key
-        
-        // Check if we have an API key
-        if (apiKey === "YOUR_API_KEY") {
-            // Return a fallback response if no API key is set
-            return {
-                source: 'News Sources',
-                title: `Latest on ${newsQuery}`,
-                summary: `To get real news updates about ${newsQuery}, I need to be configured with a valid news API key. For now, I'll provide some general information.`,
-                isSimulated: true
-            };
-        }
-        
-        const newsUrl = `https://gnews.io/api/v4/search?q=${encodeURIComponent(newsQuery)}&token=${apiKey}&lang=en&max=3`;
-        
-        // Make the API request
-        const response = await fetch(newsUrl);
-        
-        // Check if the response is OK
-        if (!response.ok) {
-            throw new Error(`News API request failed with status ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        // Check if we have articles
-        if (!data.articles || data.articles.length === 0) {
-            return {
-                source: 'News Sources',
-                title: `No news found for ${newsQuery}`,
-                summary: `I couldn't find any recent news about ${newsQuery}. Would you like me to search for something else?`,
-                articles: []
-            };
-        }
-        
-        // Format the news response
-        const articles = data.articles.slice(0, 3).map(article => ({
-            title: article.title,
-            source: article.source.name,
-            url: article.url,
-            publishedAt: new Date(article.publishedAt).toLocaleString()
-        }));
-        
-        // Create a summary from the articles
-        const summary = `Here are the latest headlines about ${newsQuery}: 
-            1. ${articles[0].title} (${articles[0].source})
-            ${articles.length > 1 ? `2. ${articles[1].title} (${articles[1].source})` : ''}
-            ${articles.length > 2 ? `3. ${articles[2].title} (${articles[2].source})` : ''}
-            Would you like me to open any of these articles?`;
-        
-        return {
-            source: 'GNews API',
-            title: `Latest on ${newsQuery}`,
-            summary: summary,
-            articles: articles
-        };
-    } catch (error) {
-        console.error("Error searching news:", error);
-        
-        // Provide a fallback response in case of API errors
-        return {
+        // Simulated news response for demonstration
+        const simulatedNews = {
             source: 'News Sources',
             title: `Latest on ${newsQuery}`,
-            summary: `I encountered an error while searching for news about ${newsQuery}. This could be due to API limits or connection issues. Here's what I know generally: 
-                ${newsQuery} has been in the news recently with various developments. Would you like me to try searching on Google News instead?`,
-            error: error.message,
-            isSimulated: true
+            summary: `Here are the latest updates on ${newsQuery} from multiple news sources. The situation is developing, and new information is being reported frequently. Would you like me to find more specific details?`,
+            articles: [
+                { title: `Recent developments in ${newsQuery}`, source: 'News Source 1' },
+                { title: `What experts are saying about ${newsQuery}`, source: 'News Source 2' },
+                { title: `Analysis: The impact of ${newsQuery}`, source: 'News Source 3' }
+            ]
         };
+        
+        return simulatedNews;
+    } catch (error) {
+        console.error("Error searching news:", error);
+        return null;
     }
 }
 
-// Enhanced function to generate a context-aware knowledge graph response
-function generateKnowledgeGraphResponse(query) {
-    // Clean the query and extract main terms
-    const cleanQuery = query.replace(/what is|who is|where is|when is|why is|how does|can you tell me about/gi, '').trim();
-    const queryWords = cleanQuery.toLowerCase().split(/\s+/);
-    
-    // Identify matching knowledge domains
-    let bestDomain = null;
-    let bestMatchScore = 0;
-    let matchedKeywords = [];
-    
-    // Find the domain with the most keyword matches
-    for (const [domain, data] of Object.entries(knowledgeDomains)) {
-        const domainKeywords = data.keywords;
-        const matches = queryWords.filter(word => domainKeywords.includes(word));
-        
-        if (matches.length > bestMatchScore) {
-            bestMatchScore = matches.length;
-            bestDomain = domain;
-            matchedKeywords = matches;
-        }
-    }
-    
-    // If no good domain match, use a general response
-    if (bestMatchScore === 0 || bestDomain === null) {
-        // Look for named entities (capitalized words) in the query
-        const possibleEntities = cleanQuery.split(/\s+/).filter(word => 
-            word.length > 1 && word[0] === word[0].toUpperCase()
-        );
-        
-        let generalResponse = '';
-        
-        if (possibleEntities.length > 0) {
-            const entities = possibleEntities.join(', ');
-            generalResponse = `Based on my knowledge graph, ${cleanQuery} appears to be associated with ${entities}. This subject involves multiple concepts and perspectives. The most accurate information would come from specialized sources on this topic.`;
-        } else {
-            // Extract potentially important terms (words longer than 4 characters)
-            const significantTerms = queryWords.filter(word => word.length > 4);
-            
-            if (significantTerms.length > 0) {
-                generalResponse = `My knowledge graph shows that ${cleanQuery} relates to concepts like ${significantTerms.join(', ')}. This is a multifaceted topic with various aspects to consider. For comprehensive information, consulting authoritative sources would be ideal.`;
-            } else {
-                generalResponse = `${cleanQuery} encompasses several interrelated concepts according to my knowledge graph. This topic has various dimensions worth exploring. For detailed information, I recommend consulting specialized resources on this subject.`;
-            }
-        }
-        
-        return {
-            source: 'Knowledge Graph',
-            title: cleanQuery,
-            summary: generalResponse
-        };
-    }
-    
-    // Generate a response based on the best matching domain
-    const domainData = knowledgeDomains[bestDomain];
-    
-    // Pick 2-3 random facts from the domain
-    const shuffledFacts = [...domainData.facts].sort(() => 0.5 - Math.random());
-    const selectedFacts = shuffledFacts.slice(0, Math.min(3, shuffledFacts.length));
-    
-    // Highlight the matched keywords in the response
-    const highlightedKeywords = matchedKeywords.length > 0 
-        ? matchedKeywords.join(', ') 
-        : `aspects of ${bestDomain}`;
-    
-    // Construct the response
-    const response = `According to my knowledge graph, ${cleanQuery} is related to ${highlightedKeywords} in the field of ${bestDomain}. This topic ${selectedFacts.join('. Also, it ')}. For more comprehensive information, specialized resources would provide deeper insights.`;
-    
-    return {
-        source: 'Knowledge Graph',
-        title: `Information about ${cleanQuery}`,
-        summary: response,
-        relatedConcepts: highlightedKeywords,
-        domain: bestDomain
-    };
-}
-
-// Enhanced function to detect the query intent for better response selection
-function detectQueryIntent(query) {
-    const lowerQuery = query.toLowerCase();
-
-    // Define patterns for different intent types
-    const intentPatterns = [
-        {
-            intent: 'how-to',
-            patterns: ['how to', 'how do i', 'how can i', 'steps to', 'guide for', 'tutorial', 'instructions', 'teach me']
-        },
-        {
-            intent: 'definition',
-            patterns: ['what is', 'what are', 'define', 'meaning of', 'definition of', 'explain', 'tell me about', 'describe']
-        },
-        {
-            intent: 'history',
-            patterns: ['history of', 'origin of', 'when did', 'when was', 'how did', 'development of', 'evolution of', 'background of']
-        },
-        {
-            intent: 'comparison',
-            patterns: ['difference between', 'compare', 'versus', 'vs', 'similarities', 'differences', 'which is better', 'contrast']
-        },
-        {
-            intent: 'recommendation',
-            patterns: ['best', 'top', 'recommended', 'most popular', 'suggest', 'advice', 'should i', 'recommend', 'worth']
-        },
-        {
-            intent: 'news',
-            patterns: ['news', 'latest', 'recent', 'update', 'what happened', 'current events', 'today']
-        },
-        {
-            intent: 'location',
-            patterns: ['where is', 'location of', 'find', 'nearby', 'closest', 'directions to', 'how to get to']
-        },
-        {
-            intent: 'time',
-            patterns: ['when is', 'time of', 'schedule', 'duration', 'how long', 'opening hours', 'deadline']
-        },
-        {
-            intent: 'reason',
-            patterns: ['why is', 'why do', 'reason for', 'cause of', 'explain why', 'how come']
-        },
-        {
-            intent: 'personal',
-            patterns: ['i am', 'my', 'i feel', 'i need', 'help me', 'i want', 'for me', 'i would like']
-        }
-    ];
-
-    // Check for patterns in the query
-    for (const intentType of intentPatterns) {
-        for (const pattern of intentType.patterns) {
-            if (lowerQuery.includes(pattern)) {
-                return intentType.intent;
-            }
-        }
-    }
-    
-    return 'general-information';
-}
-
-// Function to get answers from multiple sources - now enhanced with local semantic search
+// Function to get answers from multiple sources
 async function getMultiSourceAnswer(query) {
     content.textContent = "Searching for information...";
     
-    // Detect the query intent for customizing responses
-    const queryIntent = detectQueryIntent(query);
-    
-    // First, try to find a direct answer in the knowledge base
-    const directAnswer = knowledgeBase[query] || 
-                         Object.keys(knowledgeBase).find(key => query.includes(key) && knowledgeBase[key]);
-    
-    if (directAnswer) {
-        const answer = typeof directAnswer === 'string' ? directAnswer : knowledgeBase[directAnswer];
-        content.textContent = answer;
-        speak(answer);
-        return;
-    }
-    
-    // Second, try semantic matching from our curated question-answer pairs
-    const semanticMatch = findSemanticMatch(query);
-    
-    if (semanticMatch) {
-        content.textContent = semanticMatch;
-        speak(semanticMatch);
-        return;
-    }
-    
-    // Third, try vector embedding search for semantic similarity if the model is loaded
-    if (useModel) {
-        try {
-            const embeddingMatch = await findMostSimilarEmbedding(query);
-            
-            if (embeddingMatch) {
-                content.textContent = embeddingMatch.response;
-                speak(embeddingMatch.response);
-                return;
-            }
-        } catch (error) {
-            console.error("Error in embedding search:", error);
-            // Continue with other search methods if embedding search fails
-        }
-    }
-    
-    // Fourth, try Wikipedia for more comprehensive information
+    // Try Wikipedia first
     const wikiResult = await searchWikipedia(query);
     
     // If we got a Wikipedia result, use it
@@ -654,22 +200,6 @@ async function getMultiSourceAnswer(query) {
     const generalResult = await searchGeneralInfo(query);
     
     if (generalResult) {
-        // If it's an error response, handle differently
-        if (generalResult.isError) {
-            content.textContent = generalResult.summary;
-            speak(generalResult.summary);
-            
-            setTimeout(() => {
-                speak("Would you like me to try a direct Google search instead? Say yes or no.");
-                window.pendingSearch = {
-                    query: query,
-                    type: 'google'
-                };
-            }, 1000 * (generalResult.summary.split(' ').length / 3));
-            
-            return;
-        }
-        
         content.textContent = `${generalResult.summary} (Source: ${generalResult.source})`;
         speak(generalResult.summary);
         
@@ -686,87 +216,35 @@ async function getMultiSourceAnswer(query) {
     }
     
     // Check if it's a news-related query
-    if (queryIntent === 'news') {
+    if (query.includes('news') || query.includes('latest') || query.includes('updates') || query.includes('what\'s happening')) {
         const newsResult = await searchNews(query);
         
         if (newsResult) {
-            let displayText = `${newsResult.summary} (Source: ${newsResult.source})`;
-            
-            // If this is a simulated result, show a note about it
-            if (newsResult.isSimulated) {
-                displayText += "\n\nNote: Using simulated news data. To get real-time news, a valid API key is needed.";
-            }
-            
-            content.textContent = displayText;
-            
-            // Only speak the main summary, not the technical note
+            content.textContent = `${newsResult.summary} (Source: News APIs)`;
             speak(newsResult.summary);
-            
-            // If we have real articles, set up a pending search for article selection
-            if (newsResult.articles && newsResult.articles.length > 0 && !newsResult.isSimulated) {
-                setTimeout(() => {
-                    speak("Would you like me to open one of these articles? Say the number of the article you'd like to view, or say no.");
-                    window.pendingSearch = {
-                        query: newsResult.title,
-                        type: 'news-selection',
-                        articles: newsResult.articles
-                    };
-                }, 1000 * (newsResult.summary.split(' ').length / 2.5));
-            }
-            
             return;
         }
     }
     
-    // If we still don't have an answer, use our enhanced knowledge graph response
-    const knowledgeGraphResult = generateKnowledgeGraphResponse(query);
+    // If we still don't have an answer, use a Google Knowledge Graph simulation
+    const simulatedKnowledgeResult = {
+        source: 'Knowledge Database',
+        summary: `Based on multiple sources, ${query} refers to [simulated answer]. This information is compiled from various online sources. Would you like me to search Google for more comprehensive details?`
+    };
     
-    // Customize the response based on query intent
-    let responseIntro = '';
+    content.textContent = simulatedKnowledgeResult.summary.replace('[simulated answer]', 
+        `information related to "${query}" includes various perspectives from around the web`);
     
-    switch (queryIntent) {
-        case 'definition':
-            responseIntro = `Here's what my knowledge graph shows about the meaning of ${query.replace(/what is|what are|define|meaning of/gi, '').trim()}: `;
-            break;
-        case 'how-to':
-            responseIntro = `Regarding how to ${query.replace(/how to|steps to|guide for/gi, '').trim()}, my knowledge graph indicates: `;
-            break;
-        case 'history':
-            responseIntro = `On the history of ${query.replace(/history of|origin of|when did|when was/gi, '').trim()}, my knowledge graph shows: `;
-            break;
-        case 'comparison':
-            responseIntro = `Comparing ${query.replace(/difference between|compare|versus|vs/gi, '').trim()}, based on my knowledge graph: `;
-            break;
-        case 'recommendation':
-            responseIntro = `Regarding ${query.replace(/best|top|recommended|most popular/gi, '').trim()}, my knowledge graph suggests: `;
-            break;
-        case 'reason':
-            responseIntro = `Regarding why ${query.replace(/why is|why do|reason for|cause of/gi, '').trim()}, my knowledge base indicates: `;
-            break;
-        case 'location':
-            responseIntro = `About the location of ${query.replace(/where is|location of|find/gi, '').trim()}, my knowledge graph shows: `;
-            break;
-        case 'time':
-            responseIntro = `Regarding the timing of ${query.replace(/when is|time of|schedule/gi, '').trim()}, according to my knowledge: `;
-            break;
-        case 'personal':
-            responseIntro = `Based on what you've shared about ${query.replace(/i am|my|i feel|i need/gi, '').trim()}, I can suggest: `;
-            break;
-        default:
-            responseIntro = '';
-    }
-    
-    const finalResponse = responseIntro + knowledgeGraphResult.summary;
-    content.textContent = finalResponse;
-    speak(finalResponse);
+    speak(simulatedKnowledgeResult.summary.replace('[simulated answer]', 
+        `information related to ${query} includes various perspectives from around the web`));
     
     setTimeout(() => {
-        speak("Would you like me to search Google for more detailed information? Say yes or no.");
+        speak("Would you like me to search Google for more details? Say yes or no.");
         window.pendingSearch = {
             query: query,
             type: 'google'
         };
-    }, 1000 * (finalResponse.split(' ').length / 3));
+    }, 5000);
 }
 
 function takeCommand(message) {
@@ -786,20 +264,7 @@ function takeCommand(message) {
                 window.open(window.pendingSearch.url, "_blank");
                 speak(`Opening the source page for more information about ${query}`);
             }
-        } 
-        // Handle numeric responses for news article selection
-        else if (window.pendingSearch.type === 'news-selection' && window.pendingSearch.articles) {
-            const articleNum = parseInt(message.match(/\d+/)?.[0]);
-            
-            if (!isNaN(articleNum) && articleNum > 0 && articleNum <= window.pendingSearch.articles.length) {
-                const article = window.pendingSearch.articles[articleNum - 1];
-                window.open(article.url, "_blank");
-                speak(`Opening the article "${article.title}" from ${article.source}`);
-            } else {
-                speak("Okay, is there anything else you'd like to know?");
-            }
-        }
-        else {
+        } else {
             speak("Okay, is there anything else you'd like to know?");
         }
         
@@ -809,12 +274,10 @@ function takeCommand(message) {
     }
     
     // Try to find a direct answer first
-    const directAnswer = knowledgeBase[message] || 
-                         Object.keys(knowledgeBase).find(key => message.includes(key) && knowledgeBase[key]);
-    
+    const directAnswer = knowledgeBase[message] || Object.keys(knowledgeBase).find(key => message.includes(key) && knowledgeBase[key]);
     if (directAnswer) {
-        speak(typeof directAnswer === 'string' ? directAnswer : knowledgeBase[directAnswer]);
-        content.textContent = typeof directAnswer === 'string' ? directAnswer : knowledgeBase[directAnswer];
+        speak(directAnswer);
+        content.textContent = directAnswer;
         return;
     }
     

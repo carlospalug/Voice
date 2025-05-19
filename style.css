@@ -84,18 +84,3 @@
     max-width: calc(40vw - 70px);
     line-height: 1.4;
 }
-
-/* Media queries for better responsiveness */
-@media (max-width: 768px) {
-    .main .input {
-        width: 90vw;
-    }
-    
-    .main .input .content {
-        max-width: calc(90vw - 70px);
-    }
-    
-    .main .image-container .image img {
-        width: 250px;
-    }
-}
