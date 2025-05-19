@@ -56,7 +56,14 @@ const knowledgeBase = {
     "another joke": "Why did the JavaScript developer wear glasses? Because he couldn't C#!",
     "thank you": "You're welcome! Is there anything else I can help you with?",
     "goodbye": "Goodbye! Have a great day. Call me again if you need assistance.",
-    "bye": "Goodbye! Have a great day. Call me again if you need assistance."
+    "bye": "Goodbye! Have a great day. Call me again if you need assistance.",
+    "what is your name": "My name is CENTGPT, your virtual assistant.",
+    "who built you": "I was built as a voice-based virtual assistant project.",
+    "what's your purpose": "My purpose is to assist you with information, answer questions, and help you with basic tasks.",
+    "tell me another joke": "Why was the JavaScript developer sad? Because he didn't Node how to Express himself!",
+    "what is the weather": "I'm unable to access real-time weather information at the moment. Would you like me to search for a weather website for you?",
+    "how old are you": "I don't have an age as I'm a virtual assistant. I was created recently though!",
+    "help": "I can help with various tasks. You can ask me questions, request information, open websites, get the time or date, and more. Just speak naturally and I'll try to assist you."
 };
 
 // Function to check if message is explicitly asking to use Google
@@ -149,25 +156,77 @@ async function searchGeneralInfo(query) {
 async function searchNews(query) {
     try {
         const newsQuery = query.replace(/news about|latest on|updates on|what's happening with/gi, '').trim();
-        // Using a free news API
-        const newsUrl = `https://gnews.io/api/v4/search?q=${encodeURIComponent(newsQuery)}&token=sample-token&lang=en`;
         
-        // Simulated news response for demonstration
-        const simulatedNews = {
-            source: 'News Sources',
+        // To use this properly, you need to sign up for a free API key at https://gnews.io/
+        // Replace YOUR_API_KEY with your actual GNews API key
+        const apiKey = "YOUR_API_KEY"; // You'll need to replace this with a real key
+        
+        // Check if we have an API key
+        if (apiKey === "YOUR_API_KEY") {
+            // Return a fallback response if no API key is set
+            return {
+                source: 'News Sources',
+                title: `Latest on ${newsQuery}`,
+                summary: `To get real news updates about ${newsQuery}, I need to be configured with a valid news API key. For now, I'll provide some general information.`,
+                isSimulated: true
+            };
+        }
+        
+        const newsUrl = `https://gnews.io/api/v4/search?q=${encodeURIComponent(newsQuery)}&token=${apiKey}&lang=en&max=3`;
+        
+        // Make the API request
+        const response = await fetch(newsUrl);
+        
+        // Check if the response is OK
+        if (!response.ok) {
+            throw new Error(`News API request failed with status ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Check if we have articles
+        if (!data.articles || data.articles.length === 0) {
+            return {
+                source: 'News Sources',
+                title: `No news found for ${newsQuery}`,
+                summary: `I couldn't find any recent news about ${newsQuery}. Would you like me to search for something else?`,
+                articles: []
+            };
+        }
+        
+        // Format the news response
+        const articles = data.articles.slice(0, 3).map(article => ({
+            title: article.title,
+            source: article.source.name,
+            url: article.url,
+            publishedAt: new Date(article.publishedAt).toLocaleString()
+        }));
+        
+        // Create a summary from the articles
+        const summary = `Here are the latest headlines about ${newsQuery}: 
+            1. ${articles[0].title} (${articles[0].source})
+            ${articles.length > 1 ? `2. ${articles[1].title} (${articles[1].source})` : ''}
+            ${articles.length > 2 ? `3. ${articles[2].title} (${articles[2].source})` : ''}
+            Would you like me to open any of these articles?`;
+        
+        return {
+            source: 'GNews API',
             title: `Latest on ${newsQuery}`,
-            summary: `Here are the latest updates on ${newsQuery} from multiple news sources. The situation is developing, and new information is being reported frequently. Would you like me to find more specific details?`,
-            articles: [
-                { title: `Recent developments in ${newsQuery}`, source: 'News Source 1' },
-                { title: `What experts are saying about ${newsQuery}`, source: 'News Source 2' },
-                { title: `Analysis: The impact of ${newsQuery}`, source: 'News Source 3' }
-            ]
+            summary: summary,
+            articles: articles
         };
-        
-        return simulatedNews;
     } catch (error) {
         console.error("Error searching news:", error);
-        return null;
+        
+        // Provide a fallback response in case of API errors
+        return {
+            source: 'News Sources',
+            title: `Latest on ${newsQuery}`,
+            summary: `I encountered an error while searching for news about ${newsQuery}. This could be due to API limits or connection issues. Here's what I know generally: 
+                ${newsQuery} has been in the news recently with various developments. Would you like me to try searching on Google News instead?`,
+            error: error.message,
+            isSimulated: true
+        };
     }
 }
 
@@ -220,23 +279,49 @@ async function getMultiSourceAnswer(query) {
         const newsResult = await searchNews(query);
         
         if (newsResult) {
-            content.textContent = `${newsResult.summary} (Source: News APIs)`;
+            let displayText = `${newsResult.summary} (Source: ${newsResult.source})`;
+            
+            // If this is a simulated result, show a note about it
+            if (newsResult.isSimulated) {
+                displayText += "\n\nNote: Using simulated news data. To get real-time news, a valid API key is needed.";
+            }
+            
+            content.textContent = displayText;
+            
+            // Only speak the main summary, not the technical note
             speak(newsResult.summary);
+            
+            // If we have real articles, set up a pending search for article selection
+            if (newsResult.articles && newsResult.articles.length > 0 && !newsResult.isSimulated) {
+                setTimeout(() => {
+                    speak("Would you like me to open one of these articles? Say the number of the article you'd like to view, or say no.");
+                    window.pendingSearch = {
+                        query: newsResult.title,
+                        type: 'news-selection',
+                        articles: newsResult.articles
+                    };
+                }, 1000 * (newsResult.summary.split(' ').length / 2.5));
+            }
+            
             return;
         }
     }
     
-    // If we still don't have an answer, use a Google Knowledge Graph simulation
-    const simulatedKnowledgeResult = {
-        source: 'Knowledge Database',
-        summary: `Based on multiple sources, ${query} refers to [simulated answer]. This information is compiled from various online sources. Would you like me to search Google for more comprehensive details?`
-    };
+    // If we still don't have an answer, create a more meaningful simulated knowledge result
+    // Extract key terms from the query
+    const searchTerms = query.replace(/what is|who is|where is|when is|how to|why is|can you|tell me/gi, '').trim();
+    const keyWords = searchTerms.split(' ').filter(word => word.length > 3);
     
-    content.textContent = simulatedKnowledgeResult.summary.replace('[simulated answer]', 
-        `information related to "${query}" includes various perspectives from around the web`);
+    let simulatedResponse = `Based on general knowledge, ${searchTerms} `;
     
-    speak(simulatedKnowledgeResult.summary.replace('[simulated answer]', 
-        `information related to ${query} includes various perspectives from around the web`));
+    if (keyWords.length > 0) {
+        simulatedResponse += `involves concepts related to ${keyWords.join(', ')}. `;
+    }
+    
+    simulatedResponse += `This is a complex topic with multiple perspectives. I can't provide a comprehensive answer at the moment, but I can search for more detailed information for you.`;
+    
+    content.textContent = simulatedResponse;
+    speak(simulatedResponse);
     
     setTimeout(() => {
         speak("Would you like me to search Google for more details? Say yes or no.");
@@ -244,7 +329,7 @@ async function getMultiSourceAnswer(query) {
             query: query,
             type: 'google'
         };
-    }, 5000);
+    }, 1000 * (simulatedResponse.split(' ').length / 3));
 }
 
 function takeCommand(message) {
@@ -264,7 +349,20 @@ function takeCommand(message) {
                 window.open(window.pendingSearch.url, "_blank");
                 speak(`Opening the source page for more information about ${query}`);
             }
-        } else {
+        } 
+        // Handle numeric responses for news article selection
+        else if (window.pendingSearch.type === 'news-selection' && window.pendingSearch.articles) {
+            const articleNum = parseInt(message.match(/\d+/)?.[0]);
+            
+            if (!isNaN(articleNum) && articleNum > 0 && articleNum <= window.pendingSearch.articles.length) {
+                const article = window.pendingSearch.articles[articleNum - 1];
+                window.open(article.url, "_blank");
+                speak(`Opening the article "${article.title}" from ${article.source}`);
+            } else {
+                speak("Okay, is there anything else you'd like to know?");
+            }
+        }
+        else {
             speak("Okay, is there anything else you'd like to know?");
         }
         
@@ -274,7 +372,9 @@ function takeCommand(message) {
     }
     
     // Try to find a direct answer first
-    const directAnswer = knowledgeBase[message] || Object.keys(knowledgeBase).find(key => message.includes(key) && knowledgeBase[key]);
+    const directAnswer = knowledgeBase[message] || 
+                         Object.keys(knowledgeBase).find(key => message.includes(key) && knowledgeBase[key]);
+    
     if (directAnswer) {
         speak(directAnswer);
         content.textContent = directAnswer;
