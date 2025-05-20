@@ -29,6 +29,21 @@
             <h3>Command History</h3>
             <!-- Command history items will be added here by JavaScript -->
         </div>
+
+        <!-- Embedded Browser Component -->
+        <div class="embedded-browser" id="embedded-browser">
+            <div class="browser-controls">
+                <button id="browser-back"><i class="fas fa-arrow-left"></i></button>
+                <button id="browser-forward"><i class="fas fa-arrow-right"></i></button>
+                <button id="browser-refresh"><i class="fas fa-sync"></i></button>
+                <input type="text" id="browser-url" placeholder="Enter URL">
+                <button id="browser-go"><i class="fas fa-arrow-right"></i></button>
+                <button id="browser-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="browser-frame-container">
+                <iframe id="browser-frame" src="about:blank" title="Embedded Browser"></iframe>
+            </div>
+        </div>
     </section>
     <script src="app.js"></script>
 </body>

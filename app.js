@@ -139,6 +139,9 @@ window.addEventListener('load', () => {
         indicator.className = 'recording-indicator';
         document.querySelector('.input').appendChild(indicator);
     }
+
+    // Initialize embedded browser controls
+    initBrowser();
 });
 
 // Populate voice dropdown with available voices
@@ -416,6 +419,115 @@ async function getMultiSourceAnswer(query) {
     }, 5000);
 }
 
+// Initialize the embedded browser
+function initBrowser() {
+    const browser = document.getElementById('embedded-browser');
+    const backBtn = document.getElementById('browser-back');
+    const forwardBtn = document.getElementById('browser-forward');
+    const refreshBtn = document.getElementById('browser-refresh');
+    const urlInput = document.getElementById('browser-url');
+    const goBtn = document.getElementById('browser-go');
+    const closeBtn = document.getElementById('browser-close');
+    const frame = document.getElementById('browser-frame');
+
+    // Back button
+    backBtn.addEventListener('click', () => {
+        try {
+            frame.contentWindow.history.back();
+        } catch (error) {
+            console.error("Navigation error:", error);
+        }
+    });
+
+    // Forward button
+    forwardBtn.addEventListener('click', () => {
+        try {
+            frame.contentWindow.history.forward();
+        } catch (error) {
+            console.error("Navigation error:", error);
+        }
+    });
+
+    // Refresh button
+    refreshBtn.addEventListener('click', () => {
+        try {
+            frame.src = frame.src;
+        } catch (error) {
+            console.error("Refresh error:", error);
+        }
+    });
+
+    // Go button
+    goBtn.addEventListener('click', () => {
+        navigateToUrl(urlInput.value);
+    });
+
+    // Enter key in URL input
+    urlInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            navigateToUrl(urlInput.value);
+        }
+    });
+
+    // Close button
+    closeBtn.addEventListener('click', () => {
+        closeBrowser();
+    });
+
+    // Update URL on iframe load
+    frame.addEventListener('load', () => {
+        try {
+            let currentUrl = frame.contentWindow.location.href;
+            if (currentUrl !== 'about:blank') {
+                urlInput.value = currentUrl;
+            }
+        } catch (error) {
+            console.error("Error accessing iframe URL:", error);
+        }
+    });
+}
+
+// Function to navigate to a URL in the embedded browser
+function navigateToUrl(url) {
+    if (!url) return;
+    
+    const frame = document.getElementById('browser-frame');
+    const urlInput = document.getElementById('browser-url');
+    
+    // Add http:// if protocol is missing
+    if (!/^https?:\/\//i.test(url)) {
+        url = 'https://' + url;
+    }
+    
+    try {
+        frame.src = url;
+        urlInput.value = url;
+    } catch (error) {
+        console.error("Navigation error:", error);
+        speak("Sorry, I couldn't load that website. Please try another URL.");
+    }
+}
+
+// Function to open the embedded browser
+function openBrowser(url) {
+    const browser = document.getElementById('embedded-browser');
+    browser.classList.add('active');
+    
+    if (url) {
+        navigateToUrl(url);
+    }
+    
+    speak("Opening the browser. You can navigate using the controls at the top.");
+}
+
+// Function to close the embedded browser
+function closeBrowser() {
+    const browser = document.getElementById('embedded-browser');
+    browser.classList.remove('active');
+    // Reset the iframe to prevent audio/video from continuing to play
+    document.getElementById('browser-frame').src = 'about:blank';
+}
+
 function takeCommand(message) {
     // Check if this is a response to a pending search question
     if (window.pendingSearch) {
@@ -424,14 +536,15 @@ function takeCommand(message) {
             const type = window.pendingSearch.type;
             
             if (type === 'google') {
-                window.open(`https://www.google.com/search?q=${query.replace(/\s+/g, "+")}`, "_blank");
-                speak(`Opening Google search for ${query}`);
+                // Use embedded browser instead of new tab
+                openBrowser(`https://www.google.com/search?q=${query.replace(/\s+/g, "+")}`);
+                speak(`Opening Google search for ${query} in the embedded browser`);
             } else if (type === 'wikipedia-page') {
-                window.open(window.pendingSearch.url || `https://en.wikipedia.org/wiki/${query.replace(/\s+/g, "_")}`, "_blank");
-                speak(`Opening the Wikipedia page for ${query}`);
+                openBrowser(window.pendingSearch.url || `https://en.wikipedia.org/wiki/${query.replace(/\s+/g, "_")}`);
+                speak(`Opening the Wikipedia page for ${query} in the embedded browser`);
             } else if (type === 'general-page') {
-                window.open(window.pendingSearch.url, "_blank");
-                speak(`Opening the source page for more information about ${query}`);
+                openBrowser(window.pendingSearch.url);
+                speak(`Opening the source page for more information about ${query} in the embedded browser`);
             }
         } else {
             speak("Okay, is there anything else you'd like to know?");
@@ -439,6 +552,18 @@ function takeCommand(message) {
         
         // Clear the pending search
         window.pendingSearch = null;
+        return;
+    }
+    
+    // Browser commands
+    if (message.includes('open browser') || message.includes('show browser')) {
+        openBrowser();
+        return;
+    }
+    
+    if (message.includes('close browser') || message.includes('hide browser')) {
+        closeBrowser();
+        speak("Browser closed.");
         return;
     }
     
@@ -462,17 +587,18 @@ function takeCommand(message) {
         speak("Hello Sir, How May I Help You?");
         content.textContent = "Hello Sir, How May I Help You?";
     } else if (message.includes("open google")) {
-        window.open("https://google.com", "_blank");
-        speak("Opening Google...");
-        content.textContent = "Opening Google...";
+        // Use embedded browser instead of new tab
+        openBrowser("https://google.com");
+        speak("Opening Google in the embedded browser...");
+        content.textContent = "Opening Google in the embedded browser...";
     } else if (message.includes("open youtube")) {
-        window.open("https://youtube.com", "_blank");
-        speak("Opening Youtube...");
-        content.textContent = "Opening Youtube...";
+        openBrowser("https://youtube.com");
+        speak("Opening Youtube in the embedded browser...");
+        content.textContent = "Opening Youtube in the embedded browser...";
     } else if (message.includes("open facebook")) {
-        window.open("https://facebook.com", "_blank");
-        speak("Opening Facebook...");
-        content.textContent = "Opening Facebook...";
+        openBrowser("https://facebook.com");
+        speak("Opening Facebook in the embedded browser...");
+        content.textContent = "Opening Facebook in the embedded browser...";
     } else if (message.includes('time')) {
         const time = new Date().toLocaleString(undefined, { hour: "numeric", minute: "numeric" });
         const finalText = "The current time is " + time;
@@ -509,12 +635,25 @@ function takeCommand(message) {
         speak("Command history has been cleared.");
         content.textContent = "Command history cleared.";
     } 
+    // Website browsing commands
+    else if (message.includes('visit') || message.includes('go to')) {
+        const urlMatch = message.match(/(?:visit|go to) ([\w\.-]+\.\w+)/i);
+        if (urlMatch && urlMatch[1]) {
+            const url = urlMatch[1].trim();
+            openBrowser(url);
+            speak(`Opening ${url} in the embedded browser`);
+            content.textContent = `Opening ${url} in the embedded browser`;
+        } else {
+            speak("Please specify a valid website to visit.");
+            content.textContent = "Please specify a valid website to visit.";
+        }
+    }
     // Explicit request to use Google
     else if (isExplicitGoogleRequest(message)) {
         const searchQuery = message.replace(/use google to|search google for|google search for|look up on google/gi, '').trim();
-        window.open(`https://www.google.com/search?q=${searchQuery.replace(/\s+/g, "+")}`, "_blank");
-        speak(`Opening Google search for ${searchQuery}`);
-        content.textContent = `Opening Google search for "${searchQuery}"`;
+        openBrowser(`https://www.google.com/search?q=${searchQuery.replace(/\s+/g, "+")}`);
+        speak(`Opening Google search for ${searchQuery} in the embedded browser`);
+        content.textContent = `Opening Google search for "${searchQuery}" in the embedded browser`;
     }
     // For any other query, perform multi-source search
     else {
