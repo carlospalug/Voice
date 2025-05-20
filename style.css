@@ -31,6 +31,14 @@
 .main .image-container .image img {
     width: 350px;
     align-items: center;
+    transition: all 0.3s ease;
+}
+
+/* Animation for speaking */
+.main .image-container .image img.speaking {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(0, 188, 212, 0.7);
+    border-radius: 50%;
 }
 
 .main .image-container h1 {
@@ -56,6 +64,7 @@
     border-radius: 20px;
     background: rgb(202 253 255 / 50%);
     padding: 10px;
+    position: relative;
 }
 
 .main .input .talk {
@@ -69,11 +78,36 @@
     align-items: center;
     font-size: 15px;
     cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.main .input .talk:hover {
+    transform: scale(1.1);
 }
 
 .main .input .talk i {
     font-size: 20px;
     color: #aed0d0;
+}
+
+/* Continuous listening mode indicator */
+.main .input .talk.continuous-active {
+    background-color: rgba(0, 188, 212, 0.3);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 188, 212, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(0, 188, 212, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 188, 212, 0);
+    }
 }
 
 .main .input .content {
@@ -83,4 +117,161 @@
     word-wrap: break-word;
     max-width: calc(40vw - 70px);
     line-height: 1.4;
+}
+
+/* Recording indicator */
+.recording-indicator {
+    position: absolute;
+    right: 15px;
+    top: 15px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #333;
+    transition: all 0.3s ease;
+}
+
+.recording-indicator.active {
+    background-color: #ff4b4b;
+    box-shadow: 0 0 8px #ff4b4b;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.4; }
+    100% { opacity: 1; }
+}
+
+/* Command history */
+.command-history {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 250px;
+    max-height: 300px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 10px;
+    padding: 15px;
+    color: #aed0d0;
+    overflow-y: auto;
+    z-index: 10;
+}
+
+.command-history h3 {
+    margin-bottom: 10px;
+    color: #00bcd4;
+    text-align: center;
+    border-bottom: 1px solid #00bcd4;
+    padding-bottom: 5px;
+}
+
+.command-history .history-item {
+    padding: 8px;
+    margin-bottom: 5px;
+    background-color: rgba(174, 208, 208, 0.1);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.command-history .history-item:hover {
+    background-color: rgba(174, 208, 208, 0.3);
+}
+
+/* Voice settings panel */
+.voice-settings {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid #00bcd4;
+    border-radius: 10px;
+    padding: 15px;
+    width: 300px;
+    color: #aed0d0;
+    z-index: 100;
+}
+
+.voice-settings h3 {
+    text-align: center;
+    margin-bottom: 15px;
+    color: #00bcd4;
+}
+
+.voice-settings .setting {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.voice-settings label {
+    display: inline-block;
+    width: 60px;
+}
+
+.voice-settings input[type="range"] {
+    width: 150px;
+    margin: 0 10px;
+}
+
+.voice-settings select {
+    background: #111;
+    color: #aed0d0;
+    border: 1px solid #00bcd4;
+    border-radius: 5px;
+    padding: 5px;
+    width: 200px;
+}
+
+.voice-settings button {
+    background: #00bcd4;
+    color: #000;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    margin-right: 10px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: all 0.2s ease;
+}
+
+.voice-settings button:hover {
+    background: #00a0b4;
+}
+
+.voice-settings button#close-settings {
+    background: #333;
+    color: #aed0d0;
+}
+
+.voice-settings button#close-settings:hover {
+    background: #444;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+    .main .input {
+        width: 85vw;
+    }
+    
+    .main .input .content {
+        max-width: calc(85vw - 70px);
+    }
+    
+    .command-history {
+        width: 200px;
+        max-height: 250px;
+        top: 10px;
+        right: 10px;
+    }
+    
+    .voice-settings {
+        width: 250px;
+    }
+    
+    .voice-settings select {
+        width: 150px;
+    }
 }

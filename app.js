@@ -1,10 +1,11 @@
 const btn = document.querySelector('.talk');
 const content = document.querySelector('.content');
+const recordingIndicator = document.querySelector('.recording-indicator');
 
 // Define knowledgeBase globally to ensure it's available throughout the file
 const knowledgeBase = {
     "who are you": "I am CENTGPT, your virtual assistant. I can answer questions, provide information, and help you navigate the web.",
-    "what can you do": "I can answer basic questions, tell you the time and date, open websites, search for information, and have simple conversations.",
+    "what can you do": "I can answer basic questions, tell you the time and date, open websites, search for information, get weather updates, and have simple conversations.",
     "how are you": "I'm functioning well, thank you for asking. How can I assist you today?",
     "what is ai": "Artificial Intelligence or AI refers to systems or machines that mimic human intelligence to perform tasks and can iteratively improve themselves based on the information they collect.",
     "what is machine learning": "Machine Learning is a subset of AI that enables systems to learn from data, identify patterns, and make decisions with minimal human intervention.",
@@ -13,17 +14,95 @@ const knowledgeBase = {
     "another joke": "Why did the JavaScript developer wear glasses? Because he couldn't C#!",
     "thank you": "You're welcome! Is there anything else I can help you with?",
     "goodbye": "Goodbye! Have a great day. Call me again if you need assistance.",
-    "bye": "Goodbye! Have a great day. Call me again if you need assistance."
+    "bye": "Goodbye! Have a great day. Call me again if you need assistance.",
+    "hello": "Hello! How can I help you today?",
+    "hi": "Hi there! What can I do for you?",
+    "good morning": "Good morning! How can I assist you today?",
+    "good afternoon": "Good afternoon! What can I help you with?",
+    "good evening": "Good evening! How may I be of service?",
+    "what's your favorite color": "As an AI, I don't have personal preferences, but I find blue quite calming in user interfaces.",
+    "what's the meaning of life": "The meaning of life is a philosophical question that has many answers depending on one's beliefs. Some say it's 42!",
+    "tell me about yourself": "I'm CENTGPT, a voice-activated assistant designed to help with information retrieval, answer questions, and assist with basic tasks. I'm always learning and improving!",
+    "who is your creator": "I was created as a CENTGPT project, a voice assistant designed to help users with various tasks and information.",
+    "what time is it": "I can tell you the current time if you ask me about the time.",
+    "what is the weather": "I can check the current weather for you if you specify a location. Try asking 'what's the weather in New York?'"
+};
+
+// Command history system
+const commandHistory = {
+    commands: [],
+    maxLength: 10,
+    
+    add(command) {
+        this.commands.unshift(command); // Add to beginning
+        if (this.commands.length > this.maxLength) {
+            this.commands.pop(); // Remove oldest command
+        }
+        // Update the UI
+        this.updateUI();
+    },
+    
+    updateUI() {
+        const historyContainer = document.querySelector('.command-history');
+        if (historyContainer) {
+            historyContainer.innerHTML = '';
+            this.commands.forEach(cmd => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                item.textContent = cmd;
+                item.addEventListener('click', () => {
+                    content.textContent = cmd;
+                    takeCommand(cmd.toLowerCase());
+                });
+                historyContainer.appendChild(item);
+            });
+        }
+    }
 };
 
 function speak(text) {
     const text_speak = new SpeechSynthesisUtterance(text);
 
-    text_speak.rate = 1;
-    text_speak.volume = 1;
-    text_speak.pitch = 1;
+    // Get voice settings from preferences
+    const preferences = getVoicePreferences();
+    text_speak.rate = preferences.rate;
+    text_speak.volume = preferences.volume;
+    text_speak.pitch = preferences.pitch;
+    
+    // Try to use preferred voice if set
+    if (preferences.voiceName) {
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(voice => voice.name === preferences.voiceName);
+        if (preferredVoice) {
+            text_speak.voice = preferredVoice;
+        }
+    }
 
     window.speechSynthesis.speak(text_speak);
+    
+    // Visual feedback that the assistant is speaking
+    document.querySelector('.image img').classList.add('speaking');
+    
+    text_speak.onend = () => {
+        document.querySelector('.image img').classList.remove('speaking');
+    };
+}
+
+// Get or set voice preferences
+function getVoicePreferences() {
+    const defaultPreferences = {
+        rate: 1,
+        volume: 1,
+        pitch: 1,
+        voiceName: null
+    };
+    
+    const savedPrefs = localStorage.getItem('voicePreferences');
+    return savedPrefs ? JSON.parse(savedPrefs) : defaultPreferences;
+}
+
+function saveVoicePreferences(preferences) {
+    localStorage.setItem('voicePreferences', JSON.stringify(preferences));
 }
 
 function wishMe() {
@@ -42,7 +121,44 @@ function wishMe() {
 window.addEventListener('load', () => {
     speak("Initializing CENTGPT...");
     wishMe();
+    
+    // Initialize command history UI
+    if (!document.querySelector('.command-history')) {
+        const historyContainer = document.createElement('div');
+        historyContainer.className = 'command-history';
+        historyContainer.innerHTML = '<h3>Command History</h3>';
+        document.querySelector('.main').appendChild(historyContainer);
+    }
+    
+    // Populate voice selection if it exists
+    populateVoiceOptions();
+    
+    // Initialize recording indicator
+    if (!recordingIndicator) {
+        const indicator = document.createElement('div');
+        indicator.className = 'recording-indicator';
+        document.querySelector('.input').appendChild(indicator);
+    }
 });
+
+// Populate voice dropdown with available voices
+function populateVoiceOptions() {
+    const voiceSelect = document.getElementById('voice-select');
+    if (voiceSelect) {
+        window.speechSynthesis.getVoices().forEach(voice => {
+            const option = document.createElement('option');
+            option.value = voice.name;
+            option.textContent = `${voice.name} (${voice.lang})`;
+            voiceSelect.appendChild(option);
+        });
+        
+        // Set current preference if any
+        const prefs = getVoicePreferences();
+        if (prefs.voiceName) {
+            voiceSelect.value = prefs.voiceName;
+        }
+    }
+}
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = new SpeechRecognition();
@@ -51,7 +167,20 @@ recognition.onresult = (event) => {
     const currentIndex = event.resultIndex;
     const transcript = event.results[currentIndex][0].transcript;
     content.textContent = transcript;
+    commandHistory.add(transcript); // Add to history
     takeCommand(transcript.toLowerCase());
+};
+
+recognition.onstart = () => {
+    if (recordingIndicator) {
+        recordingIndicator.classList.add('active');
+    }
+};
+
+recognition.onend = () => {
+    if (recordingIndicator) {
+        recordingIndicator.classList.remove('active');
+    }
 };
 
 btn.addEventListener('click', () => {
@@ -171,9 +300,49 @@ async function searchNews(query) {
     }
 }
 
+// Weather API function
+async function getWeather(location) {
+    try {
+        // Using OpenWeatherMap API (you would need an API key)
+        // For demo purposes, we'll simulate a response
+        const weatherData = {
+            location: location,
+            temperature: Math.floor(Math.random() * 30) + 5, // Random temp between 5-35°C
+            condition: ['sunny', 'cloudy', 'rainy', 'partly cloudy', 'stormy'][Math.floor(Math.random() * 5)],
+            humidity: Math.floor(Math.random() * 60) + 30 // Random humidity between 30-90%
+        };
+        
+        const weatherResponse = `The weather in ${weatherData.location} is currently ${weatherData.condition} with a temperature of ${weatherData.temperature}°C and ${weatherData.humidity}% humidity.`;
+        
+        return {
+            source: 'Weather Service',
+            summary: weatherResponse,
+            data: weatherData
+        };
+    } catch (error) {
+        console.error("Error fetching weather:", error);
+        return null;
+    }
+}
+
 // Function to get answers from multiple sources
 async function getMultiSourceAnswer(query) {
     content.textContent = "Searching for information...";
+    
+    // Check if it's a weather query
+    if (query.includes('weather in') || query.includes('temperature in')) {
+        const locationMatch = query.match(/(?:weather|temperature) in (.+)/i);
+        if (locationMatch && locationMatch[1]) {
+            const location = locationMatch[1].trim();
+            const weatherInfo = await getWeather(location);
+            
+            if (weatherInfo) {
+                content.textContent = weatherInfo.summary;
+                speak(weatherInfo.summary);
+                return;
+            }
+        }
+    }
     
     // Try Wikipedia first
     const wikiResult = await searchWikipedia(query);
@@ -273,7 +442,14 @@ function takeCommand(message) {
         return;
     }
     
-    // Try to find a direct answer first
+    // Voice Settings Commands
+    if (message.includes('change your voice') || message.includes('voice settings') || message.includes('change voice settings')) {
+        toggleVoiceSettings();
+        speak("Voice settings panel is now open. You can adjust my speaking rate, volume, and pitch.");
+        return;
+    }
+    
+    // Try to find a direct answer in the knowledge base
     const directAnswer = knowledgeBase[message] || Object.keys(knowledgeBase).find(key => message.includes(key) && knowledgeBase[key]);
     if (directAnswer) {
         speak(directAnswer);
@@ -312,6 +488,26 @@ function takeCommand(message) {
         const finalText = "Opening Calculator";
         speak(finalText);
         content.textContent = finalText;
+    } else if (message.includes('weather')) {
+        // Extract location from the message
+        const locationMatch = message.match(/weather (?:in|for|at) (.+)/i);
+        if (locationMatch && locationMatch[1]) {
+            const location = locationMatch[1].trim();
+            getWeather(location).then(weatherInfo => {
+                if (weatherInfo) {
+                    speak(weatherInfo.summary);
+                    content.textContent = weatherInfo.summary;
+                }
+            });
+        } else {
+            speak("Please specify a location for the weather. For example, 'What's the weather in New York?'");
+            content.textContent = "Please specify a location for the weather.";
+        }
+    } else if (message.includes('clear history') || message.includes('delete history')) {
+        commandHistory.commands = [];
+        commandHistory.updateUI();
+        speak("Command history has been cleared.");
+        content.textContent = "Command history cleared.";
     } 
     // Explicit request to use Google
     else if (isExplicitGoogleRequest(message)) {
@@ -325,3 +521,163 @@ function takeCommand(message) {
         getMultiSourceAnswer(message);
     }
 }
+
+// Function to toggle voice settings panel
+function toggleVoiceSettings() {
+    let settingsPanel = document.querySelector('.voice-settings');
+    
+    if (!settingsPanel) {
+        // Create the settings panel
+        settingsPanel = document.createElement('div');
+        settingsPanel.className = 'voice-settings';
+        settingsPanel.innerHTML = `
+            <h3>Voice Settings</h3>
+            <div class="setting">
+                <label for="voice-select">Voice:</label>
+                <select id="voice-select"></select>
+            </div>
+            <div class="setting">
+                <label for="rate">Speed:</label>
+                <input type="range" id="rate" min="0.5" max="2" step="0.1" value="1">
+                <span id="rate-value">1</span>
+            </div>
+            <div class="setting">
+                <label for="volume">Volume:</label>
+                <input type="range" id="volume" min="0" max="1" step="0.1" value="1">
+                <span id="volume-value">1</span>
+            </div>
+            <div class="setting">
+                <label for="pitch">Pitch:</label>
+                <input type="range" id="pitch" min="0.5" max="2" step="0.1" value="1">
+                <span id="pitch-value">1</span>
+            </div>
+            <button id="test-voice">Test Voice</button>
+            <button id="save-voice">Save Settings</button>
+            <button id="close-settings">Close</button>
+        `;
+        
+        document.querySelector('.main').appendChild(settingsPanel);
+        
+        // Populate voice options
+        populateVoiceOptions();
+        
+        // Load current settings
+        const prefs = getVoicePreferences();
+        document.getElementById('rate').value = prefs.rate;
+        document.getElementById('volume').value = prefs.volume;
+        document.getElementById('pitch').value = prefs.pitch;
+        document.getElementById('rate-value').textContent = prefs.rate;
+        document.getElementById('volume-value').textContent = prefs.volume;
+        document.getElementById('pitch-value').textContent = prefs.pitch;
+        
+        // Add event listeners
+        document.getElementById('rate').addEventListener('input', e => {
+            document.getElementById('rate-value').textContent = e.target.value;
+        });
+        
+        document.getElementById('volume').addEventListener('input', e => {
+            document.getElementById('volume-value').textContent = e.target.value;
+        });
+        
+        document.getElementById('pitch').addEventListener('input', e => {
+            document.getElementById('pitch-value').textContent = e.target.value;
+        });
+        
+        document.getElementById('test-voice').addEventListener('click', () => {
+            const testPrefs = {
+                rate: parseFloat(document.getElementById('rate').value),
+                volume: parseFloat(document.getElementById('volume').value),
+                pitch: parseFloat(document.getElementById('pitch').value),
+                voiceName: document.getElementById('voice-select').value
+            };
+            
+            const text_speak = new SpeechSynthesisUtterance("This is a test of the current voice settings.");
+            text_speak.rate = testPrefs.rate;
+            text_speak.volume = testPrefs.volume;
+            text_speak.pitch = testPrefs.pitch;
+            
+            if (testPrefs.voiceName) {
+                const voices = window.speechSynthesis.getVoices();
+                const selectedVoice = voices.find(voice => voice.name === testPrefs.voiceName);
+                if (selectedVoice) {
+                    text_speak.voice = selectedVoice;
+                }
+            }
+            
+            window.speechSynthesis.speak(text_speak);
+        });
+        
+        document.getElementById('save-voice').addEventListener('click', () => {
+            const newPrefs = {
+                rate: parseFloat(document.getElementById('rate').value),
+                volume: parseFloat(document.getElementById('volume').value),
+                pitch: parseFloat(document.getElementById('pitch').value),
+                voiceName: document.getElementById('voice-select').value
+            };
+            
+            saveVoicePreferences(newPrefs);
+            speak("Voice settings have been saved.");
+        });
+        
+        document.getElementById('close-settings').addEventListener('click', () => {
+            toggleVoiceSettings();
+        });
+    } else {
+        // Toggle visibility
+        if (settingsPanel.style.display === 'none' || !settingsPanel.style.display) {
+            settingsPanel.style.display = 'block';
+        } else {
+            settingsPanel.style.display = 'none';
+        }
+    }
+}
+
+// Continuous listening mode toggle
+let continuousListening = false;
+
+function toggleContinuousListening() {
+    continuousListening = !continuousListening;
+    
+    if (continuousListening) {
+        speak("Continuous listening mode activated. I will listen for commands without needing to click the button.");
+        content.textContent = "Continuous listening mode: ON";
+        
+        recognition.continuous = true;
+        recognition.start();
+        
+        // Visual indicator for continuous mode
+        document.querySelector('.talk').classList.add('continuous-active');
+    } else {
+        speak("Continuous listening mode deactivated.");
+        content.textContent = "Continuous listening mode: OFF";
+        
+        recognition.continuous = false;
+        recognition.stop();
+        
+        // Remove visual indicator
+        document.querySelector('.talk').classList.remove('continuous-active');
+    }
+}
+
+// Add event listener for long-press to toggle continuous listening
+let pressTimer;
+btn.addEventListener('mousedown', () => {
+    pressTimer = setTimeout(() => {
+        toggleContinuousListening();
+    }, 1500); // 1.5 seconds for long press
+});
+
+btn.addEventListener('mouseup', () => {
+    clearTimeout(pressTimer);
+});
+
+// Handle when recognition service disconnects
+recognition.onend = () => {
+    if (continuousListening) {
+        recognition.start();
+    }
+    
+    if (recordingIndicator) {
+        recordingIndicator.classList.remove('active');
+    }
+};
